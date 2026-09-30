@@ -4,6 +4,7 @@ import { db, uploadsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response } from "express";
 import { ObjectNotFoundError, ObjectStorageService } from "../lib/objectStorage";
+import { activeUploadRequests, deletingUsers } from "../lib/brain-state";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
@@ -13,11 +14,17 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
+  if (deletingUsers.has(req.user.id)) {
+    res.status(409).json({ error: "Personal data deletion is in progress. Please retry shortly." });
+    return;
+  }
   const parsed = RequestUploadUrlBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Missing or invalid required fields" });
     return;
   }
+  const userId = req.user.id;
+  activeUploadRequests.set(userId, (activeUploadRequests.get(userId) ?? 0) + 1);
   try {
     const { name, size, contentType } = parsed.data;
     const uploadURL = await objectStorageService.getObjectEntityUploadURL();
@@ -29,6 +36,10 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
   } catch (error) {
     req.log.error({ errorName: error instanceof Error ? error.name : "Error" }, "Error generating upload URL");
     res.status(500).json({ error: "Failed to generate upload URL" });
+  } finally {
+    const remaining = (activeUploadRequests.get(userId) ?? 1) - 1;
+    if (remaining) activeUploadRequests.set(userId, remaining);
+    else activeUploadRequests.delete(userId);
   }
 });
 

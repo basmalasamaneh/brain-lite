@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Link, useLocation } from 'wouter';
-import { Brain, Home, Languages, Library, LogIn, LogOut, MessageCircleQuestion, Monitor, Moon, Plus, Sun } from 'lucide-react';
+import { Brain, Home, Languages, Library, LogIn, LogOut, MessageCircleQuestion, Monitor, Moon, Plus, Settings, Sun } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useI18n, type TKey } from '@/lib/i18n';
 import { useTheme, type ThemeChoice } from '@/lib/theme';
@@ -11,6 +11,7 @@ const nav: { href: string; key: TKey; icon: typeof Home }[] = [
   { href: '/capture', key: 'navCapture', icon: Plus },
   { href: '/memories', key: 'navMemories', icon: Library },
   { href: '/ask', key: 'navAsk', icon: MessageCircleQuestion },
+  { href: '/settings', key: 'navSettings', icon: Settings },
 ];
 
 function isActive(loc: string, href: string) {
@@ -115,7 +116,10 @@ export function AppShell({ children }: { children: ReactNode }) {
         <Logo />
         <div className="flex items-center gap-1">
           <LangSwitch compact />
-          <div className="w-28"><ThemeSwitch /></div>
+          <Link href="/settings" aria-label={t('navSettings')} data-testid="link-mobile-settings"
+            className={cn('grid h-9 w-9 place-items-center rounded-xl transition hover:bg-lavender hover:text-primary', isActive(loc, '/settings') && 'bg-lavender text-primary')}>
+            <Settings className="h-4 w-4" />
+          </Link>
           {!isLoading && !isAuthenticated && (
             <button onClick={login} className="grid h-9 w-9 place-items-center rounded-xl bg-primary text-primary-foreground" aria-label={t('login')} data-testid="button-login-mobile"><LogIn className="h-4 w-4" /></button>
           )}

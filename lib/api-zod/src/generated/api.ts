@@ -8,6 +8,97 @@
 import * as zod from 'zod';
 
 
+/**
+ * Authenticated; answers only from the user's memories. Returns 503 if the answer cannot be safely generated.
+ */
+export const askBrainBodyQuestionMax = 2000;
+
+
+
+export const AskBrainBody = zod.object({
+  "question": zod.string().min(1).max(askBrainBodyQuestionMax),
+  "language": zod.enum(['en', 'ar'])
+})
+
+export const AskBrainResponse = zod.object({
+  "answer": zod.string(),
+  "source_ids": zod.array(zod.number().int()),
+  "sources": zod.array(zod.object({
+  "id": zod.number().int(),
+  "type": zod.enum(['appointment', 'receipt', 'task', 'idea', 'document', 'note', 'other']),
+  "title": zod.string(),
+  "summary": zod.string().nullable(),
+  "raw_text": zod.string(),
+  "event_date": zod.string().nullable(),
+  "amount": zod.number().nullable(),
+  "currency": zod.string().nullable(),
+  "people": zod.array(zod.string()),
+  "tags": zod.array(zod.string()),
+  "confidence": zod.number().int(),
+  "status": zod.enum(['confirmed', 'needs_review']),
+  "file_path": zod.string().nullable(),
+  "created_at": zod.string(),
+  "extra": zod.record(zod.string(), zod.unknown()).optional(),
+  "extraction_status": zod.enum(['legacy', 'processing', 'extracted', 'fallback']).optional(),
+  "extraction_error": zod.union([zod.literal(null),zod.literal('not_configured'),zod.literal('unavailable'),zod.literal('invalid_response'),zod.literal('unsupported_file')]).nullish()
+}))
+})
+
+
+/**
+ * Downloads only the signed-in user's memories, uploads metadata, and profile; not account, sessions, tokens or third-party data.
+ */
+export const ExportBrainDataResponse = zod.object({
+  "profile": zod.object({
+  "id": zod.string(),
+  "email": zod.string().nullable(),
+  "firstName": zod.string().nullable(),
+  "lastName": zod.string().nullable(),
+  "profileImageUrl": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}),
+  "memories": zod.array(zod.object({
+  "id": zod.number().int(),
+  "type": zod.enum(['appointment', 'receipt', 'task', 'idea', 'document', 'note', 'other']),
+  "title": zod.string(),
+  "summary": zod.string().nullable(),
+  "raw_text": zod.string(),
+  "event_date": zod.string().nullable(),
+  "amount": zod.number().nullable(),
+  "currency": zod.string().nullable(),
+  "people": zod.array(zod.string()),
+  "tags": zod.array(zod.string()),
+  "confidence": zod.number().int(),
+  "status": zod.enum(['confirmed', 'needs_review']),
+  "file_path": zod.string().nullable(),
+  "created_at": zod.string(),
+  "extra": zod.record(zod.string(), zod.unknown()).optional(),
+  "extraction_status": zod.enum(['legacy', 'processing', 'extracted', 'fallback']).optional(),
+  "extraction_error": zod.union([zod.literal(null),zod.literal('not_configured'),zod.literal('unavailable'),zod.literal('invalid_response'),zod.literal('unsupported_file')]).nullish()
+})),
+  "uploads": zod.array(zod.object({
+  "path": zod.string(),
+  "name": zod.string(),
+  "size": zod.number().int(),
+  "contentType": zod.string()
+}))
+})
+
+
+/**
+ * Deletes only signed-in user's memories and owned uploads/files; retains account and login.
+ */
+export const DeleteBrainDataBody = zod.object({
+  "confirmation": zod.enum(['DELETE'])
+})
+
+export const DeleteBrainDataResponse = zod.object({
+  "deleted": zod.boolean(),
+  "scope": zod.string()
+})
+
+
 export const ListMemoriesQueryParams = zod.object({
   "type": zod.coerce.string().optional(),
   "search": zod.coerce.string().optional(),

@@ -5,6 +5,144 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type BrainQuestionLanguage = typeof BrainQuestionLanguage[keyof typeof BrainQuestionLanguage];
+
+
+export const BrainQuestionLanguage = {
+  en: 'en',
+  ar: 'ar',
+} as const;
+
+export interface BrainQuestion {
+  /**
+     * @minLength 1
+     * @maxLength 2000
+     */
+  question: string;
+  language: BrainQuestionLanguage;
+}
+
+export type MemoryType = typeof MemoryType[keyof typeof MemoryType];
+
+
+export const MemoryType = {
+  appointment: 'appointment',
+  receipt: 'receipt',
+  task: 'task',
+  idea: 'idea',
+  document: 'document',
+  note: 'note',
+  other: 'other',
+} as const;
+
+export type MemoryStatus = typeof MemoryStatus[keyof typeof MemoryStatus];
+
+
+export const MemoryStatus = {
+  confirmed: 'confirmed',
+  needs_review: 'needs_review',
+} as const;
+
+export type MemoryExtractionStatus = typeof MemoryExtractionStatus[keyof typeof MemoryExtractionStatus];
+
+
+export const MemoryExtractionStatus = {
+  legacy: 'legacy',
+  processing: 'processing',
+  extracted: 'extracted',
+  fallback: 'fallback',
+} as const;
+
+/**
+ * @nullable
+ */
+export type MemoryExtractionError = typeof MemoryExtractionError[keyof typeof MemoryExtractionError] | null;
+
+
+export const MemoryExtractionError = {
+  not_configured: 'not_configured',
+  unavailable: 'unavailable',
+  invalid_response: 'invalid_response',
+  unsupported_file: 'unsupported_file',
+} as const;
+
+export type MemoryExtra = { [key: string]: unknown };
+
+export interface Memory {
+  id: number;
+  type: MemoryType;
+  title: string;
+  /** @nullable */
+  summary: string | null;
+  raw_text: string;
+  /** @nullable */
+  event_date: string | null;
+  /** @nullable */
+  amount: number | null;
+  /** @nullable */
+  currency: string | null;
+  people: string[];
+  tags: string[];
+  confidence: number;
+  status: MemoryStatus;
+  /** @nullable */
+  file_path: string | null;
+  created_at: string;
+  extra?: MemoryExtra;
+  extraction_status?: MemoryExtractionStatus;
+  /** @nullable */
+  extraction_error?: MemoryExtractionError;
+}
+
+export interface BrainAnswer {
+  answer: string;
+  source_ids: number[];
+  sources: Memory[];
+}
+
+export interface BrainProfile {
+  id: string;
+  /** @nullable */
+  email: string | null;
+  /** @nullable */
+  firstName: string | null;
+  /** @nullable */
+  lastName: string | null;
+  /** @nullable */
+  profileImageUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BrainUpload {
+  path: string;
+  name: string;
+  size: number;
+  contentType: string;
+}
+
+export interface BrainExport {
+  profile: BrainProfile;
+  memories: Memory[];
+  uploads: BrainUpload[];
+}
+
+export type BrainDeletionConfirmation = typeof BrainDeletionConfirmation[keyof typeof BrainDeletionConfirmation];
+
+
+export const BrainDeletionConfirmation = {
+  DELETE: 'DELETE',
+} as const;
+
+export interface BrainDeletion {
+  confirmation: BrainDeletionConfirmation;
+}
+
+export interface BrainDeletionResult {
+  deleted: boolean;
+  scope: string;
+}
+
 export interface AuthUser {
   id: string;
   /** @nullable */
@@ -53,78 +191,6 @@ export interface UploadUrlRequest {
 export interface UploadUrlResponse {
   uploadURL: string;
   objectPath: string;
-}
-
-export type MemoryType = typeof MemoryType[keyof typeof MemoryType];
-
-
-export const MemoryType = {
-  appointment: 'appointment',
-  receipt: 'receipt',
-  task: 'task',
-  idea: 'idea',
-  document: 'document',
-  note: 'note',
-  other: 'other',
-} as const;
-
-export type MemoryStatus = typeof MemoryStatus[keyof typeof MemoryStatus];
-
-
-export const MemoryStatus = {
-  confirmed: 'confirmed',
-  needs_review: 'needs_review',
-} as const;
-
-export type MemoryExtra = { [key: string]: unknown };
-
-export type MemoryExtractionStatus = typeof MemoryExtractionStatus[keyof typeof MemoryExtractionStatus];
-
-
-export const MemoryExtractionStatus = {
-  legacy: 'legacy',
-  processing: 'processing',
-  extracted: 'extracted',
-  fallback: 'fallback',
-} as const;
-
-/**
- * @nullable
- */
-export type MemoryExtractionError = typeof MemoryExtractionError[keyof typeof MemoryExtractionError] | null;
-
-
-export const MemoryExtractionError = {
-  not_configured: 'not_configured',
-  unavailable: 'unavailable',
-  invalid_response: 'invalid_response',
-  unsupported_file: 'unsupported_file',
-} as const;
-
-export interface Memory {
-  id: number;
-  type: MemoryType;
-  title: string;
-  /** @nullable */
-  summary: string | null;
-  raw_text: string;
-  /** @nullable */
-  event_date: string | null;
-  /** @nullable */
-  amount: number | null;
-  /** @nullable */
-  currency: string | null;
-  people: string[];
-  tags: string[];
-  confidence: number;
-  status: MemoryStatus;
-  /** @nullable */
-  file_path: string | null;
-  created_at: string;
-  extra?: MemoryExtra;
-  extraction_status?: MemoryExtractionStatus;
-  /** @nullable */
-  extraction_error?: MemoryExtractionError;
 }
 
 export type MemoryInputLanguage = typeof MemoryInputLanguage[keyof typeof MemoryInputLanguage];

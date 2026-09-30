@@ -9,13 +9,17 @@ import {
 import { extractMemory } from "../lib/extraction";
 import { CaptureFileError, MAX_CAPTURE_FILE_BYTES, readCaptureFile } from "../lib/capture-file";
 import { createCalendarEvent, validEventDate } from "../lib/calendar";
+import { activeCaptures, deletingUsers } from "../lib/brain-state";
 
 const router: IRouter = Router();
-const activeCaptures = new Set<string>();
 
 // Personal data must never be cached by an intermediary.
 router.use("/memories", (_req, res, next) => {
   res.setHeader("Cache-Control", "private, no-store");
+  if (_req.user && deletingUsers.has(_req.user.id) && !["GET", "HEAD"].includes(_req.method)) {
+    res.status(409).json({ error: "Personal data deletion is in progress. Please retry shortly." });
+    return;
+  }
   next();
 });
 

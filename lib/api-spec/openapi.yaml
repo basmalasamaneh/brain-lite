@@ -11,6 +11,56 @@ tags:
   - name: health
     description: Health operations
 paths:
+  /brain/ask:
+    post:
+      operationId: askBrain
+      description: Authenticated; answers only from the user's memories. Returns 503 if the answer cannot be safely generated.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/BrainQuestion"}
+      responses:
+        "200":
+          description: Grounded answer and cited memories
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/BrainAnswer"}
+        "401": {description: Sign in required}
+        "413": {description: Too many memories to fit in context}
+        "503": {description: Answer generation unavailable or invalid}
+  /brain/export:
+    get:
+      operationId: exportBrainData
+      description: Downloads only the signed-in user's memories, uploads metadata, and profile; not account, sessions, tokens or third-party data.
+      responses:
+        "200":
+          description: Personal data JSON attachment
+          headers:
+            Content-Disposition:
+              schema: {type: string}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/BrainExport"}
+        "401": {description: Sign in required}
+  /brain/data:
+    delete:
+      operationId: deleteBrainData
+      description: Deletes only signed-in user's memories and owned uploads/files; retains account and login.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/BrainDeletion"}
+      responses:
+        "200":
+          description: Personal data deleted
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/BrainDeletionResult"}
+        "400": {description: Confirmation required}
+        "401": {description: Sign in required}
+        "503": {description: Partial cleanup failed; retry safely}
   /memories:
     get:
       operationId: listMemories
@@ -140,6 +190,58 @@ paths:
                 $ref: "#/components/schemas/HealthStatus"
 components:
   schemas:
+    BrainQuestion:
+      type: object
+      additionalProperties: false
+      required: [question, language]
+      properties:
+        question: {type: string, minLength: 1, maxLength: 2000}
+        language: {type: string, enum: [en, ar]}
+    BrainAnswer:
+      type: object
+      required: [answer, source_ids, sources]
+      properties:
+        answer: {type: string}
+        source_ids: {type: array, items: {type: integer}}
+        sources: {type: array, items: {$ref: "#/components/schemas/Memory"}}
+    BrainExport:
+      type: object
+      required: [profile, memories, uploads]
+      properties:
+        profile: {$ref: "#/components/schemas/BrainProfile"}
+        memories: {type: array, items: {$ref: "#/components/schemas/Memory"}}
+        uploads: {type: array, items: {$ref: "#/components/schemas/BrainUpload"}}
+    BrainProfile:
+      type: object
+      required: [id, email, firstName, lastName, profileImageUrl, createdAt, updatedAt]
+      properties:
+        id: {type: string}
+        email: {type: [string, "null"]}
+        firstName: {type: [string, "null"]}
+        lastName: {type: [string, "null"]}
+        profileImageUrl: {type: [string, "null"]}
+        createdAt: {type: string}
+        updatedAt: {type: string}
+    BrainUpload:
+      type: object
+      required: [path, name, size, contentType]
+      properties:
+        path: {type: string}
+        name: {type: string}
+        size: {type: integer}
+        contentType: {type: string}
+    BrainDeletion:
+      type: object
+      additionalProperties: false
+      required: [confirmation]
+      properties:
+        confirmation: {type: string, enum: [DELETE]}
+    BrainDeletionResult:
+      type: object
+      required: [deleted, scope]
+      properties:
+        deleted: {type: boolean}
+        scope: {type: string}
     AuthUser:
       type: object
       required: [id, email, firstName, lastName, profileImageUrl]

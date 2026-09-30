@@ -7,6 +7,15 @@
  */
 
 export * from './authUser';
+export * from './brainAnswer';
+export * from './brainDeletion';
+export * from './brainDeletionConfirmation';
+export * from './brainDeletionResult';
+export * from './brainExport';
+export * from './brainProfile';
+export * from './brainQuestion';
+export * from './brainQuestionLanguage';
+export * from './brainUpload';
 export * from './getCurrentAuthUser200';
 export * from './healthStatus';
 export * from './listMemoriesParams';

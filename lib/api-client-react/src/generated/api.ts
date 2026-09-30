@@ -20,6 +20,11 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  BrainAnswer,
+  BrainDeletion,
+  BrainDeletionResult,
+  BrainExport,
+  BrainQuestion,
   GetCurrentAuthUser200,
   HealthStatus,
   ListMemoriesParams,
@@ -58,6 +63,250 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getAskBrainUrl = () => {
+
+
+
+
+  return `/api/brain/ask`
+}
+
+/**
+ * Authenticated; answers only from the user's memories. Returns 503 if the answer cannot be safely generated.
+ */
+export const askBrain = async (brainQuestion: BrainQuestion, options?: Parameters<typeof customFetch>[1]): Promise<BrainAnswer> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<BrainAnswer>(getAskBrainUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(brainQuestion)
+  }
+);}
+
+
+
+
+
+export const getAskBrainMutationKey = () => ['askBrain'] as const;
+
+export const getAskBrainMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof askBrain>>, TError,AskBrainMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof askBrain>>, TError,AskBrainMutationVariables, TContext> => {
+
+const mutationKey = getAskBrainMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof askBrain>>, AskBrainMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  askBrain(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AskBrainMutationResult = NonNullable<Awaited<ReturnType<typeof askBrain>>>
+    export type AskBrainMutationBody = BodyType<BrainQuestion>
+    export type AskBrainMutationError = ErrorType<void>
+    export type AskBrainMutationVariables = {data: BodyType<BrainQuestion>}
+
+    export const useAskBrain = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof askBrain>>, TError,AskBrainMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof askBrain>>,
+        TError,
+        AskBrainMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAskBrainMutationOptions(options));
+    }
+
+export const getExportBrainDataUrl = () => {
+
+
+
+
+  return `/api/brain/export`
+}
+
+/**
+ * Downloads only the signed-in user's memories, uploads metadata, and profile; not account, sessions, tokens or third-party data.
+ */
+export const exportBrainData = async ( options?: Parameters<typeof customFetch>[1]): Promise<BrainExport> => {
+
+  return customFetch<BrainExport>(getExportBrainDataUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getExportBrainDataQueryKey = () => {
+    return [
+    `/api/brain/export`
+    ] as const;
+    }
+
+
+export const getExportBrainDataQueryOptions = <TData = Awaited<ReturnType<typeof exportBrainData>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportBrainData>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getExportBrainDataQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof exportBrainData>>> = ({ signal }) => exportBrainData({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof exportBrainData>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ExportBrainDataQueryResult = NonNullable<Awaited<ReturnType<typeof exportBrainData>>>
+export type ExportBrainDataQueryError = ErrorType<void>
+
+
+
+export function useExportBrainData<TData = Awaited<ReturnType<typeof exportBrainData>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportBrainData>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getExportBrainDataQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getDeleteBrainDataUrl = () => {
+
+
+
+
+  return `/api/brain/data`
+}
+
+/**
+ * Deletes only signed-in user's memories and owned uploads/files; retains account and login.
+ */
+export const deleteBrainData = async (brainDeletion: BrainDeletion, options?: Parameters<typeof customFetch>[1]): Promise<BrainDeletionResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<BrainDeletionResult>(getDeleteBrainDataUrl(),
+  {
+    ...options,
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(brainDeletion)
+  }
+);}
+
+
+
+
+
+export const getDeleteBrainDataMutationKey = () => ['deleteBrainData'] as const;
+
+export const getDeleteBrainDataMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteBrainData>>, TError,DeleteBrainDataMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteBrainData>>, TError,DeleteBrainDataMutationVariables, TContext> => {
+
+const mutationKey = getDeleteBrainDataMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteBrainData>>, DeleteBrainDataMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  deleteBrainData(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteBrainDataMutationResult = NonNullable<Awaited<ReturnType<typeof deleteBrainData>>>
+    export type DeleteBrainDataMutationBody = BodyType<BrainDeletion>
+    export type DeleteBrainDataMutationError = ErrorType<void>
+    export type DeleteBrainDataMutationVariables = {data: BodyType<BrainDeletion>}
+
+    export const useDeleteBrainData = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteBrainData>>, TError,DeleteBrainDataMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteBrainData>>,
+        TError,
+        DeleteBrainDataMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteBrainDataMutationOptions(options));
+    }
 
 export const getListMemoriesUrl = (params?: ListMemoriesParams,) => {
   const normalizedParams = new URLSearchParams();
