@@ -5,10 +5,10 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { Memory } from './memory';
+import type { AnswerSource } from './answerSource';
 
 export interface BrainAnswer {
   answer: string;
   source_ids: number[];
-  sources: Memory[];
+  sources: AnswerSource[];
 }

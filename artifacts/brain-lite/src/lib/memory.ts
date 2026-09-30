@@ -42,6 +42,7 @@ export function useInvalidateMemories() {
     const listKey = String(getListMemoriesQueryKey()[0]);
     qc.invalidateQueries({ predicate: (q) => String(q.queryKey[0] ?? '').startsWith(listKey) });
     qc.invalidateQueries({ queryKey: getGetMemoryStatsQueryKey() });
+    qc.invalidateQueries({ predicate: (q) => String(q.queryKey[0] ?? '').startsWith('/api/search') || String(q.queryKey[0] ?? '').startsWith('/api/indexing') });
     if (id != null) qc.invalidateQueries({ queryKey: getGetMemoryQueryKey(id) });
   };
 }

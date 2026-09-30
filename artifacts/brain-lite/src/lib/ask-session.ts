@@ -4,7 +4,7 @@ import type { Memory } from '@workspace/api-client-react';
 // In-memory chat for this tab only. Never persisted. Cleared on identity change or data deletion.
 export type ChatTurn =
   | { id: string; role: 'user'; text: string }
-  | { id: string; role: 'assistant'; text: string; sources: Memory[] }
+  | { id: string; role: 'assistant'; text: string; sources: (Memory & { relevance?: number })[] }
   | { id: string; role: 'error'; question: string; message: 'generic' | 'auth' | 'config' };
 
 let owner: string | null = null;
@@ -17,6 +17,7 @@ export const askSession = {
   get: () => turns,
   setOwner(id: string | null) { if (id !== owner) { owner = id; turns = []; emit(); } },
   push(t: ChatTurn) { turns = [...turns, t]; emit(); },
+  pushForOwner(id: string | null, t: ChatTurn) { if (id === owner) { turns = [...turns, t]; emit(); } },
   removeById(id: string) { turns = turns.filter((t) => t.id !== id); emit(); },
   clear() { turns = []; emit(); },
 };

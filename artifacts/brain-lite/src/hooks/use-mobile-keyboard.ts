@@ -12,11 +12,13 @@ export function useMobileKeyboard() {
     const update = () => {
       if (!mobile.matches) {
         document.documentElement.classList.remove('mobile-keyboard-open');
+        document.documentElement.style.removeProperty('--keyboard-inset');
         return;
       }
       const obscured = Math.max(baseline, window.innerHeight) - viewport.height - viewport.offsetTop;
       const open = obscured > 120;
       document.documentElement.classList.toggle('mobile-keyboard-open', open);
+      document.documentElement.style.setProperty('--keyboard-inset', open ? `${Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop)}px` : '0px');
       if (!open) {
         baseline = window.innerHeight;
         return;
@@ -40,6 +42,7 @@ export function useMobileKeyboard() {
     return () => {
       clearTimeout(scrollTimer);
       document.documentElement.classList.remove('mobile-keyboard-open');
+      document.documentElement.style.removeProperty('--keyboard-inset');
       viewport.removeEventListener('resize', update);
       viewport.removeEventListener('scroll', update);
       window.removeEventListener('orientationchange', reset);

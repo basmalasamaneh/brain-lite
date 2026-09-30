@@ -370,6 +370,15 @@ body::before { content: ''; position: fixed; inset: 0; pointer-events: none; z-i
 #root { position: relative; z-index: 1; }
 
 /* Mobile chrome stays clear of notches, home indicators and the visual keyboard. */
+.smart-search { top: calc(61px + env(safe-area-inset-top, 0px)); }
+.smart-search input[type='search']::-webkit-search-cancel-button { display: none; }
+.ask-composer { inset-inline: max(.5rem, env(safe-area-inset-left, 0px)) max(.5rem, env(safe-area-inset-right, 0px)); bottom: calc(6.5rem + env(safe-area-inset-bottom, 0px)); }
+.mobile-keyboard-open .ask-composer { bottom: var(--keyboard-inset, 0px); padding-bottom: .5rem; }
+@media (min-width: 768px) {
+  .smart-search { top: 0; }
+  .ask-composer { width: min(42rem, calc(100vw - 22rem)); inset-inline-start: calc(18rem + (100vw - 18rem) / 2); inset-inline-end: auto; transform: translateX(-50%); bottom: 1.5rem; }
+  [dir='rtl'] .ask-composer { transform: translateX(50%); }
+}
 .mobile-safe-header { padding-top: calc(.5rem + env(safe-area-inset-top, 0px)); padding-inline-start: max(1rem, env(safe-area-inset-left, 0px)); padding-inline-end: max(1rem, env(safe-area-inset-right, 0px)); }
 .mobile-bottom-tabs { bottom: calc(.75rem + env(safe-area-inset-bottom, 0px)); padding-bottom: .35rem; inset-inline-start: max(.75rem, env(safe-area-inset-left, 0px)); inset-inline-end: max(.75rem, env(safe-area-inset-right, 0px)); }
 @media (max-width: 767px) {

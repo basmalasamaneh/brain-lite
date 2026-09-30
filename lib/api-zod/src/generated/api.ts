@@ -9,6 +9,134 @@ import * as zod from 'zod';
 
 
 /**
+ * User-scoped hybrid semantic search, top 8. Embeddings never returned.
+ */
+export const searchRelatedQueryQMax = 2000;
+
+export const searchRelatedQueryDateFromRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const searchRelatedQueryDateToRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const SearchRelatedQueryParams = zod.object({
+  "q": zod.coerce.string().min(1).max(searchRelatedQueryQMax),
+  "type": zod.coerce.string().optional(),
+  "date_from": zod.coerce.string().regex(searchRelatedQueryDateFromRegExp).optional(),
+  "date_to": zod.coerce.string().regex(searchRelatedQueryDateToRegExp).optional()
+})
+
+export const searchRelatedResponseMemoriesItemTwoRelevanceMin = 0;
+export const searchRelatedResponseMemoriesItemTwoRelevanceMax = 1;
+
+
+
+export const SearchRelatedResponse = zod.object({
+  "memories": zod.array(zod.object({
+  "id": zod.number().int(),
+  "is_sample": zod.boolean(),
+  "type": zod.enum(['appointment', 'receipt', 'task', 'idea', 'document', 'note', 'other']),
+  "title": zod.string(),
+  "summary": zod.string().nullable(),
+  "raw_text": zod.string(),
+  "transcript": zod.string().nullable(),
+  "event_date": zod.string().nullable(),
+  "amount": zod.number().nullable(),
+  "currency": zod.string().nullable(),
+  "people": zod.array(zod.string()),
+  "tags": zod.array(zod.string()),
+  "confidence": zod.number().int(),
+  "status": zod.enum(['confirmed', 'needs_review']),
+  "file_path": zod.string().nullable(),
+  "created_at": zod.string(),
+  "extra": zod.record(zod.string(), zod.unknown()).optional(),
+  "extraction_status": zod.enum(['legacy', 'processing', 'extracted', 'fallback']).optional(),
+  "extraction_error": zod.union([zod.literal(null),zod.literal('not_configured'),zod.literal('unavailable'),zod.literal('invalid_response'),zod.literal('unsupported_file')]).nullish()
+}).and(zod.object({
+  "relevance": zod.number().min(searchRelatedResponseMemoriesItemTwoRelevanceMin).max(searchRelatedResponseMemoriesItemTwoRelevanceMax)
+})))
+})
+
+
+
+
+
+export const GetSimilarMemoriesParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const getSimilarMemoriesResponseMemoriesItemTwoRelevanceMin = 0;
+export const getSimilarMemoriesResponseMemoriesItemTwoRelevanceMax = 1;
+
+
+
+export const GetSimilarMemoriesResponse = zod.object({
+  "memories": zod.array(zod.object({
+  "id": zod.number().int(),
+  "is_sample": zod.boolean(),
+  "type": zod.enum(['appointment', 'receipt', 'task', 'idea', 'document', 'note', 'other']),
+  "title": zod.string(),
+  "summary": zod.string().nullable(),
+  "raw_text": zod.string(),
+  "transcript": zod.string().nullable(),
+  "event_date": zod.string().nullable(),
+  "amount": zod.number().nullable(),
+  "currency": zod.string().nullable(),
+  "people": zod.array(zod.string()),
+  "tags": zod.array(zod.string()),
+  "confidence": zod.number().int(),
+  "status": zod.enum(['confirmed', 'needs_review']),
+  "file_path": zod.string().nullable(),
+  "created_at": zod.string(),
+  "extra": zod.record(zod.string(), zod.unknown()).optional(),
+  "extraction_status": zod.enum(['legacy', 'processing', 'extracted', 'fallback']).optional(),
+  "extraction_error": zod.union([zod.literal(null),zod.literal('not_configured'),zod.literal('unavailable'),zod.literal('invalid_response'),zod.literal('unsupported_file')]).nullish()
+}).and(zod.object({
+  "relevance": zod.number().min(getSimilarMemoriesResponseMemoriesItemTwoRelevanceMin).max(getSimilarMemoriesResponseMemoriesItemTwoRelevanceMax)
+})))
+})
+
+
+export const GetIndexingStatusResponse = zod.object({
+  "indexed": zod.number().int(),
+  "total": zod.number().int(),
+  "pending": zod.number().int(),
+  "failed": zod.number().int().describe('Failed attempts waiting for durable retry'),
+  "mode": zod.enum(['pgvector', 'double_precision_array'])
+})
+
+
+export const ReindexMemoriesResponse = zod.object({
+  "indexed": zod.number().int(),
+  "total": zod.number().int(),
+  "pending": zod.number().int(),
+  "failed": zod.number().int().describe('Failed attempts waiting for durable retry'),
+  "mode": zod.enum(['pgvector', 'double_precision_array'])
+})
+
+
+/**
+ * Same audio validation and limits as capture/voice. keep_recording must be false. No memory or file is created.
+ */
+export const transcribeVoiceBodyAudioBase64Min = 4;
+export const transcribeVoiceBodyAudioBase64Max = 6990508;
+
+export const transcribeVoiceBodyTimezoneMax = 100;
+
+export const transcribeVoiceBodyKeepRecordingDefault = false;
+
+export const TranscribeVoiceBody = zod.object({
+  "audio_base64": zod.string().min(transcribeVoiceBodyAudioBase64Min).max(transcribeVoiceBodyAudioBase64Max).describe('Canonical padded base64; decoded bytes must be at most 5242880.'),
+  "mime_type": zod.string().describe('audio/webm, audio/ogg, audio/mp4, audio/mpeg or audio/wav; optional codecs parameter.'),
+  "language": zod.enum(['en', 'ar']),
+  "timezone": zod.string().min(1).max(transcribeVoiceBodyTimezoneMax).describe('Valid IANA timezone.'),
+  "keep_recording": zod.boolean().default(transcribeVoiceBodyKeepRecordingDefault)
+})
+
+export const TranscribeVoiceResponse = zod.object({
+  "transcript": zod.string()
+})
+
+
+/**
  * Authenticated. Maximum 5 MiB decoded audio and 120 seconds. 30 AI captures per user per hour. Audio is discarded unless keep_recording is true.
  */
 export const captureVoiceBodyAudioBase64Min = 4;
@@ -95,12 +223,21 @@ export const SaveVoicePlainNoteResponse = zod.object({
  */
 export const askBrainBodyQuestionMax = 2000;
 
+export const askBrainBodyTimezoneDefault = `UTC`;
+export const askBrainBodyTimezoneMax = 100;
+
 
 
 export const AskBrainBody = zod.object({
   "question": zod.string().min(1).max(askBrainBodyQuestionMax),
-  "language": zod.enum(['en', 'ar'])
+  "language": zod.enum(['en', 'ar']),
+  "timezone": zod.string().min(1).max(askBrainBodyTimezoneMax).default(askBrainBodyTimezoneDefault).describe('Validated IANA timezone for local calendar ranges; defaults to UTC for older clients.')
 })
+
+export const askBrainResponseSourcesItemTwoRelevanceMin = 0;
+export const askBrainResponseSourcesItemTwoRelevanceMax = 1;
+
+
 
 export const AskBrainResponse = zod.object({
   "answer": zod.string(),
@@ -125,7 +262,9 @@ export const AskBrainResponse = zod.object({
   "extra": zod.record(zod.string(), zod.unknown()).optional(),
   "extraction_status": zod.enum(['legacy', 'processing', 'extracted', 'fallback']).optional(),
   "extraction_error": zod.union([zod.literal(null),zod.literal('not_configured'),zod.literal('unavailable'),zod.literal('invalid_response'),zod.literal('unsupported_file')]).nullish()
-}))
+}).and(zod.object({
+  "relevance": zod.number().min(askBrainResponseSourcesItemTwoRelevanceMin).max(askBrainResponseSourcesItemTwoRelevanceMax).optional()
+})))
 })
 
 
@@ -186,10 +325,16 @@ export const DeleteBrainDataResponse = zod.object({
 })
 
 
+export const listMemoriesQueryDateFromRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const listMemoriesQueryDateToRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
 export const ListMemoriesQueryParams = zod.object({
   "type": zod.coerce.string().optional(),
   "search": zod.coerce.string().optional(),
-  "status": zod.enum(['confirmed', 'needs_review']).optional()
+  "status": zod.enum(['confirmed', 'needs_review']).optional(),
+  "date_from": zod.coerce.string().regex(listMemoriesQueryDateFromRegExp).optional(),
+  "date_to": zod.coerce.string().regex(listMemoriesQueryDateToRegExp).optional()
 })
 
 export const ListMemoriesResponseItem = zod.object({

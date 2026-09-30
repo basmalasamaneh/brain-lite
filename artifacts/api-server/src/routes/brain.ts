@@ -5,6 +5,8 @@ import { AskBrainBody, AskBrainResponse, DeleteBrainDataBody, DeleteBrainDataRes
 import { ObjectNotFoundError, ObjectStorageService } from "../lib/objectStorage";
 import { activeCaptures, activeQuestions as activeUserQuestions, activeUploadRequests, deletingUsers } from "../lib/brain-state";
 import rateLimit from "express-rate-limit";
+import { publicMemory, retrieveForQuestion } from "../lib/semantic-search";
+import { validTimezone } from "../lib/semantic-utils";
 import {
   generateGroundedAnswer, noDataAnswer, parseGroundedAnswer, prepareContext,
   type CompactMemory,
@@ -33,7 +35,7 @@ function serializeMemory(row: typeof memoriesTable.$inferSelect) {
 
 router.post("/brain/ask", askLimiter, async (req, res): Promise<void> => {
   const parsed = AskBrainBody.safeParse(req.body);
-  if (!parsed.success || !parsed.data.question.trim()) {
+  if (!parsed.success || !parsed.data.question.trim() || !validTimezone(parsed.data.timezone ?? "UTC")) {
     res.status(400).json({ error: "A valid question and language are required" });
     return;
   }
@@ -48,21 +50,23 @@ router.post("/brain/ask", askLimiter, async (req, res): Promise<void> => {
   activeQuestions++;
   activeUserQuestions.set(req.user!.id, (activeUserQuestions.get(req.user!.id) ?? 0) + 1);
   try {
-    const { question, language } = parsed.data;
-    // Deliberately exclude raw text, attachments, extra fields and other users.
-    const compact = await db.select({
-      id: memoriesTable.id, type: memoriesTable.type, title: memoriesTable.title,
-      summary: memoriesTable.summary, date: memoriesTable.event_date,
-      amount: memoriesTable.amount, currency: memoriesTable.currency,
-      people: memoriesTable.people, tags: memoriesTable.tags,
-    }).from(memoriesTable).where(eq(memoriesTable.userId, req.user!.id));
+    const { question, language, timezone = "UTC" } = parsed.data;
+    const { related, aggregate } = await retrieveForQuestion(req.user!.id, question, timezone);
+    const compact = related.map(({ memory: row }) => ({
+      id: row.id, type: row.type, title: row.title, summary: row.summary,
+      date: row.event_date, amount: row.amount, currency: row.currency,
+      people: row.people, tags: row.tags,
+      // Only retrieved text is supplied. No attachments, vectors or job metadata.
+      text: row.raw_text.slice(0, 16000), transcript: row.transcript?.slice(0, 16000),
+    }));
     if (!compact.length) {
       res.json(AskBrainResponse.parse({ answer: noDataAnswer(language), source_ids: [], sources: [] }));
       return;
     }
     let context: string;
     try {
-      context = prepareContext(compact satisfies CompactMemory[]);
+      const memoriesContext = prepareContext(compact satisfies CompactMemory[]);
+      context = aggregate ? JSON.stringify({ records: JSON.parse(memoriesContext), structured_sql: aggregate }) : memoriesContext;
     } catch {
       res.status(413).json({ error: "Your memories exceed the question context limit. Nothing was omitted; please reduce or archive memories before asking." });
       return;
@@ -88,7 +92,8 @@ router.post("/brain/ask", askLimiter, async (req, res): Promise<void> => {
     }
     res.json(AskBrainResponse.parse({
       ...result,
-      sources: result.source_ids.map((id) => serializeMemory(byId.get(id)!)),
+      sources: result.source_ids.map((id) => ({ ...publicMemory(byId.get(id)!),
+        relevance: related.find(({ memory }) => memory.id === id)?.relevance })),
     }));
   } catch (error) {
     req.log.warn({ errorName: error instanceof Error ? error.name : "Error" }, "Grounded question failed");

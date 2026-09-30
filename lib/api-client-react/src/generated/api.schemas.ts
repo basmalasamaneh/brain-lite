@@ -5,31 +5,25 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-export type VoiceCaptureInputLanguage = typeof VoiceCaptureInputLanguage[keyof typeof VoiceCaptureInputLanguage];
+export interface VoiceTranscript {
+  transcript: string;
+}
+
+export type IndexingStatusMode = typeof IndexingStatusMode[keyof typeof IndexingStatusMode];
 
 
-export const VoiceCaptureInputLanguage = {
-  en: 'en',
-  ar: 'ar',
+export const IndexingStatusMode = {
+  pgvector: 'pgvector',
+  double_precision_array: 'double_precision_array',
 } as const;
 
-export interface VoiceCaptureInput {
-  /**
-     * Canonical padded base64; decoded bytes must be at most 5242880.
-     * @minLength 4
-     * @maxLength 6990508
-     */
-  audio_base64: string;
-  /** audio/webm, audio/ogg, audio/mp4, audio/mpeg or audio/wav; optional codecs parameter. */
-  mime_type: string;
-  language: VoiceCaptureInputLanguage;
-  /**
-     * Valid IANA timezone.
-     * @minLength 1
-     * @maxLength 100
-     */
-  timezone: string;
-  keep_recording?: boolean;
+export interface IndexingStatus {
+  indexed: number;
+  total: number;
+  pending: number;
+  /** Failed attempts waiting for durable retry */
+  failed: number;
+  mode: IndexingStatusMode;
 }
 
 export type MemoryType = typeof MemoryType[keyof typeof MemoryType];
@@ -107,6 +101,53 @@ export interface Memory {
   extraction_error?: MemoryExtractionError;
 }
 
+export type RelatedMemory = Memory & {
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  relevance: number;
+};
+
+export type AnswerSource = Memory & {
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  relevance?: number;
+};
+
+export interface RelatedMemories {
+  memories: RelatedMemory[];
+}
+
+export type VoiceCaptureInputLanguage = typeof VoiceCaptureInputLanguage[keyof typeof VoiceCaptureInputLanguage];
+
+
+export const VoiceCaptureInputLanguage = {
+  en: 'en',
+  ar: 'ar',
+} as const;
+
+export interface VoiceCaptureInput {
+  /**
+     * Canonical padded base64; decoded bytes must be at most 5242880.
+     * @minLength 4
+     * @maxLength 6990508
+     */
+  audio_base64: string;
+  /** audio/webm, audio/ogg, audio/mp4, audio/mpeg or audio/wav; optional codecs parameter. */
+  mime_type: string;
+  language: VoiceCaptureInputLanguage;
+  /**
+     * Valid IANA timezone.
+     * @minLength 1
+     * @maxLength 100
+     */
+  timezone: string;
+  keep_recording?: boolean;
+}
+
 export interface VoiceCaptureResult {
   transcript: string;
   /** @minItems 1 */
@@ -152,12 +193,18 @@ export interface BrainQuestion {
      */
   question: string;
   language: BrainQuestionLanguage;
+  /**
+     * Validated IANA timezone for local calendar ranges; defaults to UTC for older clients.
+     * @minLength 1
+     * @maxLength 100
+     */
+  timezone?: string;
 }
 
 export interface BrainAnswer {
   answer: string;
   source_ids: number[];
-  sources: Memory[];
+  sources: AnswerSource[];
 }
 
 export interface BrainProfile {
@@ -421,10 +468,35 @@ export interface HealthStatus {
   status: string;
 }
 
+export type SearchRelatedParams = {
+/**
+ * @minLength 1
+ * @maxLength 2000
+ */
+q: string;
+type?: string;
+/**
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+date_from?: string;
+/**
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+date_to?: string;
+};
+
 export type ListMemoriesParams = {
 type?: string;
 search?: string;
 status?: ListMemoriesStatus;
+/**
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+date_from?: string;
+/**
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+date_to?: string;
 };
 
 export type ListMemoriesStatus = typeof ListMemoriesStatus[keyof typeof ListMemoriesStatus];

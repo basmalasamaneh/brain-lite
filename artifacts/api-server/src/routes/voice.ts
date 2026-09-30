@@ -2,11 +2,11 @@ import { Router, type IRouter } from "express";
 import rateLimit from "express-rate-limit";
 import { and, eq } from "drizzle-orm";
 import { db, memoriesTable, uploadsTable } from "@workspace/db";
-import { GetMemoryResponse } from "@workspace/api-zod";
+import { GetMemoryResponse, TranscribeVoiceResponse } from "@workspace/api-zod";
 import { activeCaptures, deletingUsers } from "../lib/brain-state";
 import { validEventDate } from "../lib/calendar";
 import { ObjectStorageService } from "../lib/objectStorage";
-import { cleanupReservedVoiceUpload, decodeAudio, MAX_VOICE_BYTES, plainBody, understandVoice, validateAudioDuration, VoiceError, voiceBody } from "../lib/voice-capture";
+import { cleanupReservedVoiceUpload, decodeAudio, MAX_VOICE_BYTES, plainBody, transcribeAudio, understandVoice, validateAudioDuration, VoiceError, voiceBody } from "../lib/voice-capture";
 
 const router: IRouter = Router();
 const storage = new ObjectStorageService();
@@ -18,6 +18,34 @@ function serialize(row: typeof memoriesTable.$inferSelect) {
   const { userId: _userId, ...memory } = row;
   return GetMemoryResponse.parse({ ...memory, created_at: row.created_at.toISOString() });
 }
+
+router.post("/voice/transcribe", voiceLimiter, async (req, res): Promise<void> => {
+  const userId = req.user!.id;
+  if (deletingUsers.has(userId)) { res.status(409).json({ error: "Personal data deletion is in progress.", code: "deleting" }); return; }
+  if (activeCaptures.has(userId)) { res.status(429).json({ error: "Voice processing is already in progress.", code: "busy" }); return; }
+  if (!req.is("application/json")) { res.status(415).json({ error: "Send JSON audio data.", code: "invalid_input" }); return; }
+  const parsed = voiceBody.safeParse(req.body);
+  if (!parsed.success || parsed.data.keep_recording) {
+    const oversized = typeof req.body?.audio_base64 === "string" && req.body.audio_base64.length > Math.ceil(MAX_VOICE_BYTES / 3) * 4;
+    res.status(oversized ? 413 : 400).json({ error: oversized ? "Recording must be 5 MB or smaller." : "Invalid recording. Transcription requires keep_recording false.", code: oversized ? "audio_too_large" : "invalid_input" }); return;
+  }
+  activeCaptures.add(userId);
+  try {
+    const { audio_base64, mime_type, language } = parsed.data;
+    const bytes = decodeAudio(audio_base64, mime_type);
+    await validateAudioDuration(bytes);
+    const transcript = await transcribeAudio(bytes, mime_type, language);
+    // No storage service, upload reservation, INSERT, or memory creation.
+    res.json(TranscribeVoiceResponse.parse({ transcript }));
+  } catch (error) {
+    if (error instanceof VoiceError) {
+      res.status(error.status).json({ error: error.message, code: error.code });
+    } else {
+      req.log.warn({ errorName: error instanceof Error ? error.name : "Error" }, "Voice transcription unavailable");
+      res.status(503).json({ error: "Voice transcription is unavailable right now.", code: "unavailable" });
+    }
+  } finally { activeCaptures.delete(userId); }
+});
 
 router.post("/capture/voice", voiceLimiter, async (req, res): Promise<void> => {
   const userId = req.user!.id;

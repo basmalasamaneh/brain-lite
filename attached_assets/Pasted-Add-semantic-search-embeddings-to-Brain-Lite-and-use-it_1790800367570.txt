@@ -1,0 +1,31 @@
+Add semantic search (embeddings) to Brain Lite and use it to power "Ask Your Brain" and the Memories search. This app is MOBILE-FIRST. Do not break any existing feature, and keep the gold design system, EN/AR RTL, auth and per-user data isolation exactly as they are.
+
+EMBEDDINGS (backend):
+- Use the Gemini embeddings API with the official @google/genai SDK. Read the model from env var GEMINI_EMBEDDING_MODEL (default "gemini-embedding-001") and use outputDimensionality 768. Use task types RETRIEVAL_DOCUMENT when indexing and RETRIEVAL_QUERY when searching.
+- Storage: try enabling the pgvector extension and add a `embedding vector(768)` column to `memories` with an HNSW cosine index. If pgvector is not available on this database, fall back to storing the embedding as a float array column and computing cosine similarity in Node, restricted to the current user's rows only. Tell me which option you used.
+- Build the text to embed from: title, summary, transcript/raw_text, type, tags, people, and key dates/amounts written as words. Works for Arabic and English, including cross-language (an English question should find an Arabic memory).
+- Generate the embedding automatically whenever a memory is created or edited (text, image, PDF, voice), in the background so the user never waits. If embedding fails (e.g. 429), save the memory anyway and queue a retry.
+- Add a safe migration and a one-time backfill job that embeds all existing memories in small batches with delays, respecting Gemini free-tier limits (exponential backoff with jitter on 429). Show progress in Settings ("Indexing your memories: 18/40") with a "Re-index" button.
+
+ASK YOUR BRAIN (upgrade):
+- Replace "send all memories" with retrieval: embed the question, fetch the top 8 most similar memories for THIS USER ONLY (filter by user_id in the query itself), drop results below a similarity threshold, and send only those to Gemini with the question.
+- Keep the same answer format and source cards. Add a "Hybrid boost": also include memories that match the question keywords exactly (title/tags/people) so exact names and numbers are never missed.
+- Also handle questions about dates and totals sensibly: for "how much did I spend..." or "what's coming this week", combine retrieval with a structured SQL filter (type, date range, amount) before calling Gemini.
+- If nothing passes the threshold, answer honestly: "I couldn't find anything about that in your memories" and suggest capturing it.
+- Show the sources with a relevance indicator (e.g. a small gold bar) and keep the loading state.
+
+MEMORIES SEARCH (upgrade):
+- The search bar on the Memories screen becomes smart search: as the user types (debounced 400ms) show instant keyword results, and on submit add semantic results under "Related memories". Keep filters (type, date) working together with search.
+- Add "Similar memories" at the bottom of each memory detail page (top 3 by embedding similarity, excluding itself) as horizontally scrollable cards.
+
+MOBILE UX:
+- Search bar is sticky at the top, full width, 48px tall, with a clear (x) button and a mic icon that reuses the existing voice capture to ask by voice.
+- Results render as compact cards, no horizontal scroll at 390px, with skeletons while loading and a friendly empty state.
+- Ask input is fixed above the bottom tab bar and keyboard-aware (respect safe areas and dvh).
+
+SECURITY AND LIMITS:
+- Every retrieval query must filter by the logged-in user's id. Never return another user's embeddings or memories.
+- Apply the existing AI rate limits, and cache query embeddings for a few minutes to save quota.
+- Never send embeddings to the client.
+
+Test with at least 15 memories: Arabic and English questions, a question with an exact name, a question with no answer, a date/amount question, and two accounts to verify isolation. Then list what you changed and which vector storage option you used.

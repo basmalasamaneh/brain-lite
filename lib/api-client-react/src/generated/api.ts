@@ -28,6 +28,7 @@ import type {
   BrainExport,
   BrainQuestion,
   HealthStatus,
+  IndexingStatus,
   ListMemoriesParams,
   LoginInput,
   Memory,
@@ -36,13 +37,16 @@ import type {
   MemoryUpdate,
   PasswordInput,
   ProfileInput,
+  RelatedMemories,
+  SearchRelatedParams,
   SignUpInput,
   UploadUrlRequest,
   UploadUrlResponse,
   VoiceCaptureError,
   VoiceCaptureInput,
   VoiceCaptureResult,
-  VoicePlainInput
+  VoicePlainInput,
+  VoiceTranscript
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -71,6 +75,382 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getSearchRelatedUrl = (params: SearchRelatedParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/search/related?${stringifiedParams}` : `/api/search/related`
+}
+
+/**
+ * User-scoped hybrid semantic search, top 8. Embeddings never returned.
+ */
+export const searchRelated = async (params: SearchRelatedParams, options?: Parameters<typeof customFetch>[1]): Promise<RelatedMemories> => {
+
+  return customFetch<RelatedMemories>(getSearchRelatedUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getSearchRelatedQueryKey = (params?: SearchRelatedParams,) => {
+    return [
+    `/api/search/related`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getSearchRelatedQueryOptions = <TData = Awaited<ReturnType<typeof searchRelated>>, TError = ErrorType<void>>(params: SearchRelatedParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof searchRelated>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getSearchRelatedQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof searchRelated>>> = ({ signal }) => searchRelated(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof searchRelated>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type SearchRelatedQueryResult = NonNullable<Awaited<ReturnType<typeof searchRelated>>>
+export type SearchRelatedQueryError = ErrorType<void>
+
+
+
+export function useSearchRelated<TData = Awaited<ReturnType<typeof searchRelated>>, TError = ErrorType<void>>(
+ params: SearchRelatedParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof searchRelated>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getSearchRelatedQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetSimilarMemoriesUrl = (id: number,) => {
+
+
+
+
+  return `/api/memories/${id}/similar`
+}
+
+export const getSimilarMemories = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<RelatedMemories> => {
+
+  return customFetch<RelatedMemories>(getGetSimilarMemoriesUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSimilarMemoriesQueryKey = (id: number,) => {
+    return [
+    `/api/memories/${id}/similar`
+    ] as const;
+    }
+
+
+export const getGetSimilarMemoriesQueryOptions = <TData = Awaited<ReturnType<typeof getSimilarMemories>>, TError = ErrorType<void>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSimilarMemories>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSimilarMemoriesQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSimilarMemories>>> = ({ signal }) => getSimilarMemories(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSimilarMemories>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSimilarMemoriesQueryResult = NonNullable<Awaited<ReturnType<typeof getSimilarMemories>>>
+export type GetSimilarMemoriesQueryError = ErrorType<void>
+
+
+
+export function useGetSimilarMemories<TData = Awaited<ReturnType<typeof getSimilarMemories>>, TError = ErrorType<void>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSimilarMemories>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSimilarMemoriesQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetIndexingStatusUrl = () => {
+
+
+
+
+  return `/api/indexing/status`
+}
+
+export const getIndexingStatus = async ( options?: Parameters<typeof customFetch>[1]): Promise<IndexingStatus> => {
+
+  return customFetch<IndexingStatus>(getGetIndexingStatusUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetIndexingStatusQueryKey = () => {
+    return [
+    `/api/indexing/status`
+    ] as const;
+    }
+
+
+export const getGetIndexingStatusQueryOptions = <TData = Awaited<ReturnType<typeof getIndexingStatus>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getIndexingStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetIndexingStatusQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getIndexingStatus>>> = ({ signal }) => getIndexingStatus({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getIndexingStatus>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetIndexingStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getIndexingStatus>>>
+export type GetIndexingStatusQueryError = ErrorType<unknown>
+
+
+
+export function useGetIndexingStatus<TData = Awaited<ReturnType<typeof getIndexingStatus>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getIndexingStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetIndexingStatusQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getReindexMemoriesUrl = () => {
+
+
+
+
+  return `/api/indexing/reindex`
+}
+
+export const reindexMemories = async ( options?: Parameters<typeof customFetch>[1]): Promise<IndexingStatus> => {
+
+  return customFetch<IndexingStatus>(getReindexMemoriesUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getReindexMemoriesMutationKey = () => ['reindexMemories'] as const;
+
+export const getReindexMemoriesMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reindexMemories>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reindexMemories>>, TError,void, TContext> => {
+
+const mutationKey = getReindexMemoriesMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reindexMemories>>, void> = () => {
+
+
+          return  reindexMemories(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReindexMemoriesMutationResult = NonNullable<Awaited<ReturnType<typeof reindexMemories>>>
+
+    export type ReindexMemoriesMutationError = ErrorType<void>
+
+
+    export const useReindexMemories = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reindexMemories>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reindexMemories>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getReindexMemoriesMutationOptions(options));
+    }
+
+export const getTranscribeVoiceUrl = () => {
+
+
+
+
+  return `/api/voice/transcribe`
+}
+
+/**
+ * Same audio validation and limits as capture/voice. keep_recording must be false. No memory or file is created.
+ */
+export const transcribeVoice = async (voiceCaptureInput: VoiceCaptureInput, options?: Parameters<typeof customFetch>[1]): Promise<VoiceTranscript> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<VoiceTranscript>(getTranscribeVoiceUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(voiceCaptureInput)
+  }
+);}
+
+
+
+
+
+export const getTranscribeVoiceMutationKey = () => ['transcribeVoice'] as const;
+
+export const getTranscribeVoiceMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof transcribeVoice>>, TError,TranscribeVoiceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof transcribeVoice>>, TError,TranscribeVoiceMutationVariables, TContext> => {
+
+const mutationKey = getTranscribeVoiceMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof transcribeVoice>>, TranscribeVoiceMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  transcribeVoice(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type TranscribeVoiceMutationResult = NonNullable<Awaited<ReturnType<typeof transcribeVoice>>>
+    export type TranscribeVoiceMutationBody = BodyType<VoiceCaptureInput>
+    export type TranscribeVoiceMutationError = ErrorType<void>
+    export type TranscribeVoiceMutationVariables = {data: BodyType<VoiceCaptureInput>}
+
+    export const useTranscribeVoice = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof transcribeVoice>>, TError,TranscribeVoiceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof transcribeVoice>>,
+        TError,
+        TranscribeVoiceMutationVariables,
+        TContext
+      > => {
+      return useMutation(getTranscribeVoiceMutationOptions(options));
+    }
 
 export const getCaptureVoiceUrl = () => {
 

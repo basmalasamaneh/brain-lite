@@ -14,4 +14,10 @@ export interface BrainQuestion {
      */
   question: string;
   language: BrainQuestionLanguage;
+  /**
+     * Validated IANA timezone for local calendar ranges; defaults to UTC for older clients.
+     * @minLength 1
+     * @maxLength 100
+     */
+  timezone?: string;
 }

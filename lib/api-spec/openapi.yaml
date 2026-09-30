@@ -11,6 +11,72 @@ tags:
   - name: health
     description: Health operations
 paths:
+  /search/related:
+    get:
+      operationId: searchRelated
+      description: User-scoped hybrid semantic search, top 8. Embeddings never returned.
+      parameters:
+        - {name: q, in: query, required: true, schema: {type: string, minLength: 1, maxLength: 2000}}
+        - {name: type, in: query, schema: {type: string}}
+        - {name: date_from, in: query, schema: {type: string, pattern: '^\d{4}-\d{2}-\d{2}$'}}
+        - {name: date_to, in: query, schema: {type: string, pattern: '^\d{4}-\d{2}-\d{2}$'}}
+      responses:
+        "200":
+          description: Related memories
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/RelatedMemories"}
+        "503": {description: Semantic provider unavailable; keyword results remain available}
+  /memories/{id}/similar:
+    get:
+      operationId: getSimilarMemories
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, minimum: 1}}
+      responses:
+        "200":
+          description: Top 3 similar owned memories excluding this memory
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/RelatedMemories"}
+        "404": {description: Memory not found}
+  /indexing/status:
+    get:
+      operationId: getIndexingStatus
+      responses:
+        "200":
+          description: Current user's durable indexing progress
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/IndexingStatus"}
+  /indexing/reindex:
+    post:
+      operationId: reindexMemories
+      responses:
+        "200":
+          description: Current user's memories queued again
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/IndexingStatus"}
+        "429": {description: Reindex rate limit}
+  /voice/transcribe:
+    post:
+      operationId: transcribeVoice
+      description: Same audio validation and limits as capture/voice. keep_recording must be false. No memory or file is created.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/VoiceCaptureInput"}
+      responses:
+        "200":
+          description: Verbatim transcript only
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/VoiceTranscript"}
+        "400": {description: Invalid input or keep_recording true}
+        "413": {description: Audio too large or too long}
+        "429": {description: Voice processing limit}
+        "503": {description: Provider unavailable}
   /capture/voice:
     post:
       operationId: captureVoice
@@ -110,6 +176,8 @@ paths:
         - {name: type, in: query, schema: {type: string}}
         - {name: search, in: query, schema: {type: string}}
         - {name: status, in: query, schema: {type: string, enum: [confirmed, needs_review]}}
+        - {name: date_from, in: query, schema: {type: string, pattern: '^\d{4}-\d{2}-\d{2}$'}}
+        - {name: date_to, in: query, schema: {type: string, pattern: '^\d{4}-\d{2}-\d{2}$'}}
       responses:
         "200":
           description: Memories
@@ -288,6 +356,38 @@ paths:
                 $ref: "#/components/schemas/HealthStatus"
 components:
   schemas:
+    VoiceTranscript:
+      type: object
+      required: [transcript]
+      properties:
+        transcript: {type: string}
+    IndexingStatus:
+      type: object
+      required: [indexed, total, pending, failed, mode]
+      properties:
+        indexed: {type: integer}
+        total: {type: integer}
+        pending: {type: integer}
+        failed: {type: integer, description: Failed attempts waiting for durable retry}
+        mode: {type: string, enum: [pgvector, double_precision_array]}
+    RelatedMemory:
+      allOf:
+        - {$ref: "#/components/schemas/Memory"}
+        - type: object
+          required: [relevance]
+          properties:
+            relevance: {type: number, minimum: 0, maximum: 1}
+    AnswerSource:
+      allOf:
+        - {$ref: "#/components/schemas/Memory"}
+        - type: object
+          properties:
+            relevance: {type: number, minimum: 0, maximum: 1}
+    RelatedMemories:
+      type: object
+      required: [memories]
+      properties:
+        memories: {type: array, items: {$ref: "#/components/schemas/RelatedMemory"}}
     VoiceCaptureInput:
       type: object
       additionalProperties: false
@@ -325,13 +425,14 @@ components:
       properties:
         question: {type: string, minLength: 1, maxLength: 2000}
         language: {type: string, enum: [en, ar]}
+        timezone: {type: string, minLength: 1, maxLength: 100, default: UTC, description: "Validated IANA timezone for local calendar ranges; defaults to UTC for older clients."}
     BrainAnswer:
       type: object
       required: [answer, source_ids, sources]
       properties:
         answer: {type: string}
         source_ids: {type: array, items: {type: integer}}
-        sources: {type: array, items: {$ref: "#/components/schemas/Memory"}}
+        sources: {type: array, items: {$ref: "#/components/schemas/AnswerSource"}}
     BrainExport:
       type: object
       required: [profile, memories, uploads]

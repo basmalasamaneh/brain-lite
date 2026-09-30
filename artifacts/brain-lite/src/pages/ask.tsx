@@ -10,6 +10,9 @@ import { Surface, TypeChip, btnGhost, btnPrimary , Skeleton } from '@/components
 import { LogoMark, Medallion } from '@/components/brand';
 import { PulseStar } from '@/components/motion';
 import { cn } from '@/lib/utils';
+import { createPortal } from 'react-dom';
+import { VoiceQuestion } from '@/components/voice-question';
+import { Relevance } from '@/components/semantic-memories';
 
 const uid = () => Math.random().toString(36).slice(2);
 
@@ -20,7 +23,7 @@ function classifyError(err: unknown): 'generic' | 'auth' | 'config' {
   return 'generic';
 }
 
-function SourceCard({ m }: { m: Memory }) {
+function SourceCard({ m }: { m: Memory & { relevance?: number } }) {
   const { lang } = useI18n();
   return (
     <Link href={`/memories/${m.id}`} data-testid={`link-source-${m.id}`}
@@ -29,6 +32,7 @@ function SourceCard({ m }: { m: Memory }) {
         <div className="flex items-center gap-2"><TypeChip type={m.type} />{m.event_date && <span className="truncate text-xs text-muted-foreground">{formatDateTime(m.event_date, lang)}</span>}</div>
         <p className="mt-1.5 truncate text-sm font-medium">{m.title}</p>
         {m.summary && <p className="truncate text-xs text-muted-foreground">{m.summary}</p>}
+        <Relevance value={m.relevance} id={m.id} />
       </div>
       <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-gold rtl:-scale-x-100" />
     </Link>
@@ -92,6 +96,8 @@ export default function AskPage() {
   const turns = useAskTurns();
   const ask = useAskBrain();
   const [q, setQ] = useState('');
+  const ownerRef = useRef(user?.id ?? null);
+  ownerRef.current = user?.id ?? null;
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { if (!isLoading) askSession.setOwner(user?.id ?? null); }, [user?.id, isLoading]);
@@ -104,12 +110,14 @@ export default function AskPage() {
     else askSession.push({ id: uid(), role: 'user', text });
     setQ('');
     const ownerAtSend = user?.id ?? null;
-    ask.mutate({ data: { question: text, language: lang } }, {
+    let timezone = 'UTC';
+    try { timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; } catch { /* UTC is the safe default when browser timezone detection fails. */ }
+    ask.mutate({ data: { question: text, language: lang, timezone } }, {
       onSuccess: (res) => {
-        if ((user?.id ?? null) !== ownerAtSend) return;
-        askSession.push({ id: uid(), role: 'assistant', text: res.answer, sources: res.sources ?? [] });
+        if (ownerRef.current !== ownerAtSend) return;
+        askSession.pushForOwner(ownerAtSend, { id: uid(), role: 'assistant', text: res.answer, sources: res.sources ?? [] });
       },
-      onError: (err) => askSession.push({ id: uid(), role: 'error', question: text, message: classifyError(err) }),
+      onError: (err) => { if (ownerRef.current === ownerAtSend) askSession.pushForOwner(ownerAtSend, { id: uid(), role: 'error', question: text, message: classifyError(err) }); },
     });
   };
   const onSubmit = (e: FormEvent) => { e.preventDefault(); send(q); };
@@ -131,7 +139,7 @@ export default function AskPage() {
 
   const suggestions: TKey[] = ['askQ1', 'askQ2', 'askQ3'];
   return (
-    <div className="mx-auto flex max-w-2xl flex-col">
+    <div className="mx-auto flex min-h-[50dvh] max-w-2xl flex-col pb-40">
       <header className="rise mb-6 flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
           <p className="eyebrow mb-2 text-gold">{t('askEyebrow')}</p>
@@ -161,18 +169,19 @@ export default function AskPage() {
         <div ref={endRef} />
       </div>
 
-      <form onSubmit={onSubmit} className="sticky bottom-24 z-20 -mx-2 mt-6 rounded-3xl bg-background/90 px-2 pb-1 pt-2 backdrop-blur md:bottom-6">
+      {createPortal(<form onSubmit={onSubmit} className="ask-composer fixed z-30 rounded-3xl bg-background/95 px-2 pb-2 pt-2 backdrop-blur">
         <div className="flex items-end gap-2 rounded-2xl border border-card-border bg-card/95 p-2 soft-shadow backdrop-blur focus-within:border-gold-500">
           <textarea value={q} onChange={(e) => setQ(e.target.value)} rows={1} maxLength={1000} placeholder={t('askPlaceholder')} data-testid="input-ask"
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(q); } }}
-            className="max-h-40 min-h-[44px] flex-1 resize-none bg-transparent px-3 py-2.5 text-sm outline-none placeholder:text-muted-foreground/70" />
+            className="max-h-40 min-h-[44px] min-w-0 flex-1 resize-none bg-transparent px-3 py-2.5 text-sm outline-none placeholder:text-muted-foreground/70" />
+          <VoiceQuestion onTranscript={setQ} disabled={ask.isPending} testId="button-ask-mic" />
           <button type="submit" disabled={!q.trim() || ask.isPending} aria-label={t('askSend')} data-testid="button-ask-send"
             className="grid h-11 w-11 shrink-0 place-items-center rounded-full gold-gradient text-gold-ink transition hover:brightness-110 active:scale-95 disabled:opacity-40">
             <ArrowUp className="h-5 w-5" />
           </button>
         </div>
         <p className="mt-2 flex items-start gap-1.5 px-1 text-xs text-muted-foreground" data-testid="text-ask-privacy"><ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" />{t('askPrivacy')}</p>
-      </form>
+      </form>, document.body)}
     </div>
   );
 }

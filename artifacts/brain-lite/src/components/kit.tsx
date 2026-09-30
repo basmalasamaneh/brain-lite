@@ -97,7 +97,7 @@ export function MemoryCard({ memory, index = 0 }: { memory: Memory; index?: numb
             <span className="tabular-nums">{formatDate(date, lang)}</span>
             {amount && <span className="font-medium text-foreground/80">· {amount}</span>}
             {memory.file_path && <Paperclip className="h-3.5 w-3.5" />}
-            {memory.tags.slice(0, 2).map((tag) => <span key={tag} className="rounded-md bg-muted px-1.5 py-0.5">#{tag}</span>)}
+            {memory.tags.slice(0, 2).map((tag) => <span key={tag} className="max-w-full truncate rounded-md bg-muted px-1.5 py-0.5">#{tag}</span>)}
           </div>
         </div>
       </Surface>

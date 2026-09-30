@@ -11,6 +11,7 @@ import { CaptureFileError, MAX_CAPTURE_FILE_BYTES, readCaptureFile } from "../li
 import { createCalendarEvent, validEventDate } from "../lib/calendar";
 import { activeCaptures, deletingUsers } from "../lib/brain-state";
 import rateLimit from "express-rate-limit";
+import { validDateFilter } from "../lib/semantic-utils";
 
 const router: IRouter = Router();
 const captureLimiter = rateLimit({ windowMs: 60 * 60 * 1000, limit: 30,
@@ -40,11 +41,16 @@ router.get("/memories", async (req, res): Promise<void> => {
   const parsed = ListMemoriesQueryParams.safeParse(req.query);
   if (!parsed.success) { res.status(400).json({ error: "Invalid filters" }); return; }
   const scope = eq(memoriesTable.userId, req.user!.id);
-  const { type, search, status } = parsed.data;
+  const { type, search, status, date_from, date_to } = parsed.data;
+  if (!validDateFilter(date_from) || !validDateFilter(date_to) || date_from && date_to && date_from > date_to) {
+    res.status(400).json({ error: "Invalid date filters" }); return;
+  }
   const rows = await db.select().from(memoriesTable).where(and(
     scope,
     type && type !== "all" ? eq(memoriesTable.type, type as typeof memoriesTable.$inferSelect.type) : undefined,
     status ? eq(memoriesTable.status, status) : undefined,
+    date_from ? sql`left(${memoriesTable.event_date},10)>=${date_from}` : undefined,
+    date_to ? sql`left(${memoriesTable.event_date},10)<=${date_to}` : undefined,
     search ? or(ilike(memoriesTable.title, `%${search.slice(0, 200)}%`), ilike(memoriesTable.raw_text, `%${search.slice(0, 200)}%`)) : undefined,
   )).orderBy(desc(memoriesTable.created_at));
   res.json(ListMemoriesResponse.parse(rows.map(serialize)));

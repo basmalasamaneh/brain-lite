@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, Download, KeyRound, Languages, Loader2, LogOut, Monitor, Moon, Palette, ShieldCheck, Sun, Trash2, UserRound } from 'lucide-react';
+import { AlertTriangle, Download, KeyRound, Languages, Loader2, LogOut, Monitor, Moon, Palette, ShieldCheck, Sun, Trash2, UserRound, Sparkles } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { AuthError } from '@workspace/replit-auth-web';
 import { authErrorKey, usePreferences } from '@/lib/auth-helpers';
@@ -14,6 +14,8 @@ import { PageHeader, Skeleton, Surface, btnGhost, btnDanger, btnPrimary, fieldCl
 import { IconCircle } from '@/components/brand';
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
+import { useIndexStatus, useReindex } from '@/hooks/use-semantic-search';
+import { searchText } from '@/lib/i18n-search';
 
 // API is mounted at /api on the same origin (not under the web base path).
 const EXPORT_URL = '/api/brain/export';
@@ -71,7 +73,7 @@ export default function SettingsPage() {
     del.mutate({ data: { confirmation: 'DELETE' } }, {
       onSuccess: () => {
         askSession.clear();
-        qc.removeQueries({ predicate: (q) => String(q.queryKey[0] ?? '').startsWith('/api/memories') || String(q.queryKey[0] ?? '').startsWith('/api/brain') });
+        qc.removeQueries({ predicate: (q) => ['/api/memories', '/api/brain', '/api/search', '/api/indexing'].some((prefix) => String(q.queryKey[0] ?? '').startsWith(prefix)) });
         qc.invalidateQueries();
         setOpen(false); setTyped('');
         toast({ title: t('deleteAllDone') });
@@ -85,6 +87,7 @@ export default function SettingsPage() {
       <PageHeader eyebrow={t('settingsEyebrow')} title={t('settingsTitle')} lead={t('settingsLead')} />
       <div className="space-y-4">
         <AccountSection />
+        {isAuthenticated && <IndexingSection />}
         <Section icon={Palette} title={t('appearance')}>
           <p className="mb-2 text-sm font-medium">{t('theme')}</p>
           <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label={t('theme')}>
@@ -155,6 +158,34 @@ export default function SettingsPage() {
       </AlertDialog>
       <DangerAccount />
     </div>
+  );
+}
+
+function IndexingSection() {
+  const { t, lang } = useI18n();
+  const status = useIndexStatus();
+  const reindex = useReindex();
+  const data = status.data;
+  const percent = data && data.total > 0 ? Math.min(100, Math.round(data.indexed / data.total * 100)) : 0;
+  return (
+    <Section icon={Sparkles} title={searchText(lang, 'indexTitle')}>
+      {status.isLoading ? <Skeleton className="h-20" /> : status.isError ? <div role="alert" className="space-y-2" data-testid="error-index-status">
+        <p className="text-sm text-danger-ink">{searchText(lang, 'indexError')}</p>
+        <button onClick={() => status.refetch()} className={btnGhost} data-testid="button-retry-index">{t('retry')}</button>
+      </div> : data && <div aria-live="polite">
+        <p className="font-medium tabular-nums" data-testid="text-index-progress">{searchText(lang, 'indexProgress')}: {data.indexed}/{data.total}</p>
+        <div role="progressbar" aria-label={searchText(lang, 'indexProgress')} aria-valuemin={0} aria-valuemax={data.total || 1} aria-valuenow={data.indexed} className="mt-3 h-2 overflow-hidden rounded-full bg-muted" data-testid="progress-index">
+          <div className="gold-gradient h-full rounded-full transition-all" style={{ width: `${percent}%` }} />
+        </div>
+        <p className="mt-2 text-xs text-muted-foreground tabular-nums" data-testid="text-index-counts">{searchText(lang, 'pending')}: {data.pending} · {searchText(lang, 'failed')}: {data.failed}</p>
+        {data.failed > 0 ? <p role="status" className="mt-2 text-sm text-danger-ink" data-testid="status-index-failed">{searchText(lang, 'indexFailed')}</p>
+          : data.pending === 0 && <p className="mt-2 text-sm text-muted-foreground">{searchText(lang, 'indexReady')}</p>}
+      </div>}
+      <button onClick={() => reindex.mutate()} disabled={reindex.isPending || (data?.pending ?? 0) > 0} className={cn(btnGhost, 'mt-4')} data-testid="button-reindex">
+        {reindex.isPending && <Loader2 className="h-4 w-4 animate-spin" />}{searchText(lang, reindex.isPending ? 'reindexing' : 'reindex')}
+      </button>
+      {reindex.isError && <p role="alert" className="mt-2 text-sm text-danger-ink" data-testid="error-reindex">{searchText(lang, 'reindexError')}</p>}
+    </Section>
   );
 }
 

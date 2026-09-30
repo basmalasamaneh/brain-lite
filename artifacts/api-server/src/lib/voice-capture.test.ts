@@ -1,11 +1,19 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { spawnSync } from "node:child_process";
-import { cleanupReservedVoiceUpload, decodeAudio, MAX_VOICE_BYTES, parseVoiceResult, plainBody, transcodeMp3, validateAudioDuration, voiceBody } from "./voice-capture";
+import { cleanupReservedVoiceUpload, decodeAudio, MAX_VOICE_BYTES, parseTranscriptionResponse, parseVoiceResult, plainBody, transcodeMp3, validateAudioDuration, voiceBody } from "./voice-capture";
 
 const wavHeader = Buffer.from("RIFF\x00\x00\x00\x00WAVE", "binary");
 const body = { audio_base64: wavHeader.toString("base64"), mime_type: "audio/wav", language: "ar",
   timezone: "Asia/Jerusalem", keep_recording: false };
+
+test("transcription preserves English and Arabic questions without extraction or answering", () => {
+  assert.equal(parseTranscriptionResponse('{"transcript":"How much did I spend today?"}'), "How much did I spend today?");
+  assert.equal(parseTranscriptionResponse('{"transcript":"  كم صرفت اليوم؟  "}'), "كم صرفت اليوم؟");
+  assert.throws(() => parseTranscriptionResponse('{"transcript":""}'), { code: "no_speech" });
+  assert.throws(() => parseTranscriptionResponse('{"transcript":"hello","items":[]}'), { code: "invalid_extraction" });
+  assert.throws(() => parseTranscriptionResponse('not json'), { code: "invalid_extraction" });
+});
 
 test("strict voice input rejects missing audio, data URIs, unknown zones and MIME mismatch", () => {
   assert.equal(voiceBody.safeParse(body).success, true);

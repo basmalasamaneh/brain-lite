@@ -1,1 +1,2 @@
 - [Gemini model availability](gemini-availability.md) — model listings do not guarantee access; verify with a generation request.
+- [Grounded aggregate scope](grounded-aggregate-scope.md) — totals must honor question qualifiers and currencies, not just date filters or semantic top-k.
