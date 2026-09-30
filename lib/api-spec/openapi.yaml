@@ -17,6 +17,7 @@ paths:
       parameters:
         - {name: type, in: query, schema: {type: string}}
         - {name: search, in: query, schema: {type: string}}
+        - {name: status, in: query, schema: {type: string, enum: [confirmed, needs_review]}}
       responses:
         "200":
           description: Memories
@@ -73,6 +74,17 @@ paths:
       operationId: deleteMemory
       responses:
         "204": {description: Deleted}
+  /memories/{id}/calendar:
+    get:
+      operationId: downloadMemoryCalendar
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        "200":
+          description: Calendar event
+          content:
+            text/calendar:
+              schema: {type: string}
   /storage/uploads/request-url:
     post:
       operationId: requestUploadUrl
@@ -183,6 +195,15 @@ components:
         status: {$ref: "#/components/schemas/MemoryStatus"}
         file_path: {type: [string, "null"]}
         created_at: {type: string}
+        extra:
+          type: object
+          additionalProperties: true
+        extraction_status:
+          type: string
+          enum: [legacy, processing, extracted, fallback]
+        extraction_error:
+          type: [string, "null"]
+          enum: [null, not_configured, unavailable, invalid_response, unsupported_file]
     MemoryInput:
       type: object
       required: [raw_text]
@@ -190,6 +211,8 @@ components:
         raw_text: {type: string, maxLength: 100000}
         title: {type: string, maxLength: 200}
         file_path: {type: [string, "null"]}
+        language: {type: string, enum: [en, ar]}
+        timezone: {type: string, maxLength: 100}
     MemoryUpdate:
       type: object
       properties:
@@ -203,6 +226,9 @@ components:
         currency: {type: [string, "null"], maxLength: 10}
         people: {type: array, items: {type: string}, maxItems: 50}
         tags: {type: array, items: {type: string}, maxItems: 50}
+        extra:
+          type: object
+          additionalProperties: true
     MemoryStats:
       type: object
       required: [total, needs_review, confirmed]

@@ -39,8 +39,21 @@ export function formatAmount(amount: number | null, currency: string | null, lan
 export function useInvalidateMemories() {
   const qc = useQueryClient();
   return (id?: number) => {
-    qc.invalidateQueries({ queryKey: getListMemoriesQueryKey() });
+    const listKey = String(getListMemoriesQueryKey()[0]);
+    qc.invalidateQueries({ predicate: (q) => String(q.queryKey[0] ?? '').startsWith(listKey) });
     qc.invalidateQueries({ queryKey: getGetMemoryStatsQueryKey() });
     if (id != null) qc.invalidateQueries({ queryKey: getGetMemoryQueryKey(id) });
   };
 }
+
+export function hasTime(iso: string | null | undefined) { return !!iso && /T\d\d:\d\d/.test(iso); }
+
+export function formatDateTime(iso: string | null | undefined, lang: string) {
+  if (!iso) return '';
+  if (!hasTime(iso)) return formatDate(iso.slice(0, 10) + 'T12:00:00', lang);
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleString(lang === 'ar' ? 'ar' : 'en', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
+export const calendarUrl = (id: number) => `/api/memories/${id}/calendar`;

@@ -7,6 +7,7 @@
  */
 import type { MemoryStatus } from './memoryStatus';
 import type { MemoryType } from './memoryType';
+import type { MemoryUpdateExtra } from './memoryUpdateExtra';
 
 export interface MemoryUpdate {
   /**
@@ -39,4 +40,5 @@ export interface MemoryUpdate {
   people?: string[];
   /** @maxItems 50 */
   tags?: string[];
+  extra?: MemoryUpdateExtra;
 }

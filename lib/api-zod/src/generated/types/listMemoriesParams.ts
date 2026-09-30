@@ -5,8 +5,10 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ListMemoriesStatus } from './listMemoriesStatus';
 
 export type ListMemoriesParams = {
 type?: string;
 search?: string;
+status?: ListMemoriesStatus;
 };

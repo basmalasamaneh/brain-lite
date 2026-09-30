@@ -1,21 +1,42 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useParams } from 'wouter';
 import { ArrowLeft, Calendar, Check, ExternalLink, Loader2, Lock, Paperclip, Pencil, Trash2, Users, Wallet, Tag } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { getGetMemoryQueryKey, useDeleteMemory, useGetMemory, useUpdateMemory, type Memory, type MemoryStatus, type MemoryType, type MemoryUpdate } from '@workspace/api-client-react';
 import { useI18n, usePageTitle, type TKey } from '@/lib/i18n';
-import { MEMORY_TYPES, fileUrl, formatAmount, formatDate, useInvalidateMemories } from '@/lib/memory';
+import { MEMORY_TYPES, fileUrl, formatAmount, formatDate, formatDateTime, useInvalidateMemories } from '@/lib/memory';
+import { CalendarLink, ExtractionBanner, ExtraSummary } from '@/components/extraction';
 import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { EmptyState, ErrorState, SampleBanner, StatusPill, Surface, TypeChip, btnGhost, btnPrimary, fieldCls } from '@/components/kit';
 import { cn } from '@/lib/utils';
 
-type Draft = { title: string; raw_text: string; summary: string; type: MemoryType; status: MemoryStatus; event_date: string; amount: string; currency: string; people: string; tags: string };
+type Draft = { title: string; raw_text: string; summary: string; type: MemoryType; status: MemoryStatus; date: string; time: string; amount: string; currency: string; people: string; tags: string; extra: string };
+
+const splitIso = (iso: string | null) => {
+  if (!iso) return { date: '', time: '' };
+  const m = /^(\d{4}-\d{2}-\d{2})(?:[T ](\d{2}:\d{2}))?/.exec(iso);
+  return m ? { date: m[1], time: m[2] ?? '' } : { date: '', time: '' };
+};
+/** Rebuild ISO from date/time fields; keeps original value untouched if unchanged, and preserves its offset. */
+const buildIso = (d: Draft, original: string | null): string | null => {
+  if (!d.date) return null;
+  const orig = splitIso(original);
+  if (original && orig.date === d.date && orig.time === d.time) return original;
+  if (!d.time) return d.date;
+  const off = original ? /(Z|[+-]\d{2}:?\d{2})$/.exec(original)?.[1] : undefined;
+  // Keep original seconds when only the date changed.
+  const secs = original && orig.time === d.time ? (/T\d{2}:\d{2}(:\d{2}(?:\.\d+)?)/.exec(original)?.[1] ?? ':00') : ':00';
+  // Never invent a timezone: keep the original offset, otherwise stay floating.
+  const offset = off ?? '';
+  return `${d.date}T${d.time}${secs}${offset}`;
+};
 
 const toDraft = (m: Memory): Draft => ({
   title: m.title, raw_text: m.raw_text, summary: m.summary ?? '', type: m.type, status: m.status,
-  event_date: m.event_date ? m.event_date.slice(0, 10) : '', amount: m.amount == null ? '' : String(m.amount),
+  ...splitIso(m.event_date), amount: m.amount == null ? '' : String(m.amount),
   currency: m.currency ?? '', people: m.people.join(', '), tags: m.tags.join(', '),
+  extra: m.extra && Object.keys(m.extra).length ? JSON.stringify(m.extra, null, 2) : '',
 });
 const splitList = (s: string) => s.split(/[,،]/).map((x) => x.trim()).filter(Boolean).slice(0, 50);
 
@@ -57,6 +78,10 @@ export default function MemoryDetailPage() {
   const [deleteError, setDeleteError] = useState(false);
   const m = q.data;
   usePageTitle(m?.title ?? t('memoriesTitle'));
+  const autoEdit = useRef(new URLSearchParams(window.location.search).get('edit') === '1');
+  useEffect(() => {
+    if (autoEdit.current && m && isAuthenticated) { autoEdit.current = false; setDraft(toDraft(m)); }
+  }, [m, isAuthenticated]);
 
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setDraft((d) => (d ? { ...d, [k]: v } : d));
 
@@ -76,11 +101,19 @@ export default function MemoryDetailPage() {
     const amt = draft.amount.trim() === '' ? null : Number(draft.amount);
     if (amt !== null && (isNaN(amt) || amt < 0)) e.amount = 'errAmount';
     if (draft.currency.trim().length > 10) e.currency = 'errCurrency';
+    let extra: Record<string, unknown> = {};
+    if (draft.extra.trim()) {
+      try {
+        const parsed: unknown = JSON.parse(draft.extra);
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) e.extra = 'errJson';
+        else extra = parsed as Record<string, unknown>;
+      } catch { e.extra = 'errJson'; }
+    }
     setErrors(e);
     if (Object.keys(e).length) return;
     send({
       title: draft.title.trim(), raw_text: draft.raw_text, summary: draft.summary.trim() || null, type: draft.type, status: draft.status,
-      event_date: draft.event_date || null, amount: amt, currency: draft.currency.trim().toUpperCase() || null,
+      event_date: buildIso(draft, m?.event_date ?? null), amount: amt, extra, currency: draft.currency.trim().toUpperCase() || null,
       people: splitList(draft.people), tags: splitList(draft.tags),
     }, () => setDraft(null));
   };
@@ -133,7 +166,10 @@ export default function MemoryDetailPage() {
                   </button>
                 ))}
               </div></Field>
-            <Field label={t('fDate')}><input type="date" value={draft.event_date} onChange={(e) => set('event_date', e.target.value)} className={fieldCls} data-testid="input-date" /></Field>
+            <div className="grid grid-cols-[1fr_8rem] gap-3">
+              <Field label={t('fDate')}><input type="date" value={draft.date} onChange={(e) => set('date', e.target.value)} className={fieldCls} data-testid="input-date" /></Field>
+              <Field label={t('fTime')} hint={t('fTimeHint')}><input type="time" value={draft.time} onChange={(e) => set('time', e.target.value)} disabled={!draft.date} className={fieldCls} data-testid="input-time" /></Field>
+            </div>
             <div className="grid grid-cols-[1fr_7rem] gap-3">
               <Field label={t('fAmount')} error={errors.amount && t(errors.amount)}><input inputMode="decimal" value={draft.amount} onChange={(e) => set('amount', e.target.value)} className={fieldCls} data-testid="input-amount" /></Field>
               <Field label={t('fCurrency')} error={errors.currency && t(errors.currency)}><input value={draft.currency} onChange={(e) => set('currency', e.target.value)} maxLength={10} placeholder="USD" className={cn(fieldCls, 'uppercase')} data-testid="input-currency" /></Field>
@@ -141,6 +177,7 @@ export default function MemoryDetailPage() {
             <Field label={t('fPeople')} hint={t('commaHint')}><input value={draft.people} onChange={(e) => set('people', e.target.value)} className={fieldCls} data-testid="input-people" /></Field>
             <Field label={t('fTags')} hint={t('commaHint')}><input value={draft.tags} onChange={(e) => set('tags', e.target.value)} className={fieldCls} data-testid="input-tags" /></Field>
             <div className="sm:col-span-2"><Field label={t('fSummary')}><textarea value={draft.summary} onChange={(e) => set('summary', e.target.value)} maxLength={5000} rows={3} className={fieldCls} data-testid="input-summary" /></Field></div>
+            <div className="sm:col-span-2"><Field label={t('fExtra')} error={errors.extra && t(errors.extra)}><textarea value={draft.extra} onChange={(e) => set('extra', e.target.value)} rows={5} dir="ltr" spellCheck={false} placeholder='{"store": "…", "items": [], "warranty": "…"}' className={cn(fieldCls, 'font-mono text-xs')} data-testid="input-extra" /></Field></div>
             <div className="sm:col-span-2"><Field label={t('fRaw')}><textarea value={draft.raw_text} onChange={(e) => set('raw_text', e.target.value)} maxLength={100000} rows={8} className={cn(fieldCls, 'leading-relaxed')} data-testid="input-raw" /></Field></div>
           </Surface>
           {saveError && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{t('errSave')}</p>}
@@ -150,6 +187,9 @@ export default function MemoryDetailPage() {
           </div>
         </form>
       ) : (
+        <div className="space-y-5">
+        <ExtractionBanner m={m} canEdit={isAuthenticated} confirming={update.isPending}
+          onConfirm={() => send({ status: 'confirmed' })} onChange={() => { setDraft(toDraft(m)); setErrors({}); }} />
         <div className="grid gap-5 lg:grid-cols-[1fr_18rem]">
           <Surface className="rise p-6 sm:p-9">
             <div className="flex flex-wrap items-center gap-2"><TypeChip type={m.type} size="lg" /><StatusPill status={m.status} /></div>
@@ -157,6 +197,7 @@ export default function MemoryDetailPage() {
             <p className={cn('mt-4 text-lg leading-relaxed', !m.summary && 'text-muted-foreground italic text-base')} data-testid="text-summary">{m.summary || t('noSummary')}</p>
             <div className="my-6 h-px bg-border" />
             <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t('fRaw')}</h2>
+            {m.extra && Object.keys(m.extra).length > 0 && <div className="mb-6 rounded-xl border border-border bg-background/60 p-4"><ExtraSummary extra={m.extra} /></div>}
             <p className="whitespace-pre-wrap leading-relaxed text-foreground/85" data-testid="text-raw">{m.raw_text || t('noText')}</p>
             {m.file_path && (
               <div className="mt-6 rounded-xl border border-border bg-background/60 p-3">
@@ -170,16 +211,17 @@ export default function MemoryDetailPage() {
 
           <div className="space-y-4">
             <Surface className="rise divide-y divide-border px-5 py-2" style={{ animationDelay: '80ms' }}>
-              <Meta icon={Calendar} label={t('fDate')}>{m.event_date ? formatDate(m.event_date, lang) : <span className="text-muted-foreground">{t('none')}</span>}</Meta>
+              <Meta icon={Calendar} label={t('fDate')}>{m.event_date ? formatDateTime(m.event_date, lang) : <span className="text-muted-foreground">{t('none')}</span>}</Meta>
               <Meta icon={Wallet} label={t('fAmount')}>{amount || <span className="text-muted-foreground">{t('none')}</span>}</Meta>
               <Meta icon={Users} label={t('fPeople')}>{m.people.length ? <div className="flex flex-wrap gap-1.5">{m.people.map((p) => <span key={p} className="rounded-full bg-lavender px-2 py-0.5 text-xs text-primary">{p}</span>)}</div> : <span className="text-muted-foreground">{t('none')}</span>}</Meta>
               <Meta icon={Tag} label={t('fTags')}>{m.tags.length ? <div className="flex flex-wrap gap-1.5">{m.tags.map((p) => <span key={p} className="rounded-md bg-muted px-2 py-0.5 text-xs">#{p}</span>)}</div> : <span className="text-muted-foreground">{t('none')}</span>}</Meta>
               <div className="py-3 text-xs text-muted-foreground">{t('created')} {formatDate(m.created_at, lang)}</div>
             </Surface>
 
+            <CalendarLink m={m} />
             {isAuthenticated ? (
               <div className="rise space-y-2" style={{ animationDelay: '140ms' }}>
-                {m.status === 'needs_review' && (
+                {m.status === 'needs_review' && (!m.extraction_status || m.extraction_status === 'legacy') && (
                   <button onClick={() => send({ status: 'confirmed' })} disabled={update.isPending} className={cn(btnGhost, 'w-full border-green/40 text-green hover:bg-green/10')} data-testid="button-confirm">
                     {update.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}{t('markConfirmed')}
                   </button>
@@ -195,6 +237,7 @@ export default function MemoryDetailPage() {
               </div>
             )}
           </div>
+        </div>
         </div>
       )}
 

@@ -512,6 +512,77 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getDeleteMemoryMutationOptions(options));
     }
 
+export const getDownloadMemoryCalendarUrl = (id: number,) => {
+
+
+
+
+  return `/api/memories/${id}/calendar`
+}
+
+export const downloadMemoryCalendar = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<string> => {
+
+  return customFetch<string>(getDownloadMemoryCalendarUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getDownloadMemoryCalendarQueryKey = (id: number,) => {
+    return [
+    `/api/memories/${id}/calendar`
+    ] as const;
+    }
+
+
+export const getDownloadMemoryCalendarQueryOptions = <TData = Awaited<ReturnType<typeof downloadMemoryCalendar>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof downloadMemoryCalendar>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getDownloadMemoryCalendarQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof downloadMemoryCalendar>>> = ({ signal }) => downloadMemoryCalendar(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof downloadMemoryCalendar>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type DownloadMemoryCalendarQueryResult = NonNullable<Awaited<ReturnType<typeof downloadMemoryCalendar>>>
+export type DownloadMemoryCalendarQueryError = ErrorType<unknown>
+
+
+
+export function useDownloadMemoryCalendar<TData = Awaited<ReturnType<typeof downloadMemoryCalendar>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof downloadMemoryCalendar>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getDownloadMemoryCalendarQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getRequestUploadUrlUrl = () => {
 
 

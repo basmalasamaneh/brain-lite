@@ -1,6 +1,6 @@
 import { useRef, useState, type DragEvent } from 'react';
 import { Link, useLocation } from 'wouter';
-import { Camera, FileText, ImageIcon, Loader2, Lock, UploadCloud, X } from 'lucide-react';
+import { Camera, FileText, ImageIcon, Loader2, Lock, ShieldCheck, UploadCloud, X } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useCreateMemory, useRequestUploadUrl, type UploadUrlRequestContentType } from '@workspace/api-client-react';
 import { useI18n, usePageTitle, type TKey } from '@/lib/i18n';
@@ -8,6 +8,7 @@ import { ACCEPTED, MAX_BYTES, useInvalidateMemories } from '@/lib/memory';
 import { useToast } from '@/hooks/use-toast';
 import { PageHeader, SampleBanner, Surface, btnPrimary, fieldCls } from '@/components/kit';
 import { cn } from '@/lib/utils';
+import { UnderstandingSkeleton } from '@/components/extraction';
 
 function resolveType(f: File): string {
   if (f.type) return f.type === 'image/jpg' ? 'image/jpeg' : f.type;
@@ -21,7 +22,7 @@ function titleFromFile(name: string) {
 }
 
 export default function CapturePage() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   usePageTitle(t('captureTitle'));
   const { isAuthenticated, isLoading: authLoading, login } = useAuth();
   const { toast } = useToast();
@@ -40,6 +41,8 @@ export default function CapturePage() {
   const fileInput = useRef<HTMLInputElement>(null);
   const cameraInput = useRef<HTMLInputElement>(null);
   const busy = phase !== 'idle';
+  const inFlight = useRef(false);
+  const uploaded = useRef<{ file: File; path: string } | null>(null);
 
   const pick = (f: File | undefined | null) => {
     if (!f) return;
@@ -65,14 +68,16 @@ export default function CapturePage() {
   };
 
   const submit = async () => {
-    if (busy) return;
+    if (busy || inFlight.current) return;
     if (!isAuthenticated) { login(); return; }
     const raw = text.trim();
     if (!raw && !file) { setError('errNothing'); return; }
     if (title.trim().length > 200) { setError('errTitleLong'); return; }
     setError(null);
+    inFlight.current = true;
     let filePath: string | null = null;
-    if (file) {
+    if (file && uploaded.current?.file === file) filePath = uploaded.current.path;
+    else if (file) {
       setPhase('uploading');
       try {
         const contentType = resolveType(file) as UploadUrlRequestContentType;
@@ -80,20 +85,24 @@ export default function CapturePage() {
         const res = await fetch(uploadURL, { method: 'PUT', body: file, headers: { 'Content-Type': contentType } });
         if (!res.ok) throw new Error(String(res.status));
         filePath = objectPath;
+        uploaded.current = { file, path: objectPath };
       } catch {
-        setError('errUpload'); setPhase('idle'); return;
+        setError('errUpload'); setPhase('idle'); inFlight.current = false; return;
       }
     }
     setPhase('saving');
     const finalTitle = (title.trim() || (raw ? raw.split('\n').find((l) => l.trim())!.trim() : titleFromFile(file!.name))).slice(0, 200);
-    create.mutate({ data: { raw_text: raw, title: finalTitle, file_path: filePath } }, {
+    let timezone: string | undefined;
+    try { timezone = Intl.DateTimeFormat().resolvedOptions().timeZone?.slice(0, 100) || undefined; } catch { timezone = undefined; }
+    create.mutate({ data: { raw_text: raw, title: finalTitle, file_path: filePath, language: lang, timezone } }, {
       onSuccess: (m) => {
         invalidate(m.id);
-        setTitle(''); setText(''); clearFile(); setPhase('idle');
-        toast({ title: t('savedToast'), description: t('savedToastBody') });
+        uploaded.current = null;
+        setTitle(''); setText(''); clearFile(); setPhase('idle'); inFlight.current = false;
+        toast({ title: t('savedPlain') });
         navigate(`/memories/${m.id}`);
       },
-      onError: () => { setError('errSave'); setPhase('idle'); },
+      onError: () => { setError('errSave'); setPhase('idle'); inFlight.current = false; },
     });
   };
 
@@ -103,6 +112,7 @@ export default function CapturePage() {
     <>
       <SampleBanner />
       <PageHeader title={t('captureTitle')} lead={t('captureLead')} />
+      {phase === 'saving' && <div className="mb-5"><UnderstandingSkeleton /></div>}
       <form onSubmit={(e) => { e.preventDefault(); submit(); }} className="rise grid gap-5 lg:grid-cols-[1.3fr_1fr]" style={{ animationDelay: '80ms' }} noValidate>
         <Surface className="space-y-5 p-5 sm:p-7">
           <label className="block">
@@ -154,9 +164,10 @@ export default function CapturePage() {
           ) : (
             <button type="submit" disabled={busy || authLoading} className={cn(btnPrimary, 'w-full py-3')} data-testid="button-save">
               {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-              {phase === 'uploading' ? t('uploading') : phase === 'saving' ? t('saving') : t('save')}
+              {phase === 'uploading' ? t('uploading') : phase === 'saving' ? t('understanding') : t('save')}
             </button>
           )}
+          <p className="flex items-start gap-2 rounded-xl bg-muted/50 px-3.5 py-2.5 text-xs leading-relaxed text-muted-foreground" data-testid="text-ai-notice"><ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />{t('aiNotice')}</p>
           <Link href="/memories" className="block text-center text-sm text-muted-foreground hover:text-foreground" data-testid="link-to-memories">{t('navMemories')}</Link>
         </div>
       </form>

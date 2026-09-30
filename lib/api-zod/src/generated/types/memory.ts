@@ -5,6 +5,9 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { MemoryExtra } from './memoryExtra';
+import type { MemoryExtractionError } from './memoryExtractionError';
+import type { MemoryExtractionStatus } from './memoryExtractionStatus';
 import type { MemoryStatus } from './memoryStatus';
 import type { MemoryType } from './memoryType';
 
@@ -28,4 +31,8 @@ export interface Memory {
   /** @nullable */
   file_path: string | null;
   created_at: string;
+  extra?: MemoryExtra;
+  extraction_status?: MemoryExtractionStatus;
+  /** @nullable */
+  extraction_error?: MemoryExtractionError;
 }

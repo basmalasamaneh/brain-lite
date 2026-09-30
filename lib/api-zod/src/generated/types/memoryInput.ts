@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { MemoryInputLanguage } from './memoryInputLanguage';
 
 export interface MemoryInput {
   /** @maxLength 100000 */
@@ -13,4 +14,7 @@ export interface MemoryInput {
   title?: string;
   /** @nullable */
   file_path?: string | null;
+  language?: MemoryInputLanguage;
+  /** @maxLength 100 */
+  timezone?: string;
 }

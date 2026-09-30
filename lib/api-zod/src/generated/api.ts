@@ -10,7 +10,8 @@ import * as zod from 'zod';
 
 export const ListMemoriesQueryParams = zod.object({
   "type": zod.coerce.string().optional(),
-  "search": zod.coerce.string().optional()
+  "search": zod.coerce.string().optional(),
+  "status": zod.enum(['confirmed', 'needs_review']).optional()
 })
 
 export const ListMemoriesResponseItem = zod.object({
@@ -27,7 +28,10 @@ export const ListMemoriesResponseItem = zod.object({
   "confidence": zod.number().int(),
   "status": zod.enum(['confirmed', 'needs_review']),
   "file_path": zod.string().nullable(),
-  "created_at": zod.string()
+  "created_at": zod.string(),
+  "extra": zod.record(zod.string(), zod.unknown()).optional(),
+  "extraction_status": zod.enum(['legacy', 'processing', 'extracted', 'fallback']).optional(),
+  "extraction_error": zod.union([zod.literal(null),zod.literal('not_configured'),zod.literal('unavailable'),zod.literal('invalid_response'),zod.literal('unsupported_file')]).nullish()
 })
 export const ListMemoriesResponse = zod.array(ListMemoriesResponseItem)
 
@@ -36,12 +40,16 @@ export const createMemoryBodyRawTextMax = 100000;
 
 export const createMemoryBodyTitleMax = 200;
 
+export const createMemoryBodyTimezoneMax = 100;
+
 
 
 export const CreateMemoryBody = zod.object({
   "raw_text": zod.string().max(createMemoryBodyRawTextMax),
   "title": zod.string().max(createMemoryBodyTitleMax).optional(),
-  "file_path": zod.string().nullish()
+  "file_path": zod.string().nullish(),
+  "language": zod.enum(['en', 'ar']).optional(),
+  "timezone": zod.string().max(createMemoryBodyTimezoneMax).optional()
 })
 
 export const CreateMemoryResponse = zod.object({
@@ -58,7 +66,10 @@ export const CreateMemoryResponse = zod.object({
   "confidence": zod.number().int(),
   "status": zod.enum(['confirmed', 'needs_review']),
   "file_path": zod.string().nullable(),
-  "created_at": zod.string()
+  "created_at": zod.string(),
+  "extra": zod.record(zod.string(), zod.unknown()).optional(),
+  "extraction_status": zod.enum(['legacy', 'processing', 'extracted', 'fallback']).optional(),
+  "extraction_error": zod.union([zod.literal(null),zod.literal('not_configured'),zod.literal('unavailable'),zod.literal('invalid_response'),zod.literal('unsupported_file')]).nullish()
 })
 
 
@@ -87,7 +98,10 @@ export const GetMemoryResponse = zod.object({
   "confidence": zod.number().int(),
   "status": zod.enum(['confirmed', 'needs_review']),
   "file_path": zod.string().nullable(),
-  "created_at": zod.string()
+  "created_at": zod.string(),
+  "extra": zod.record(zod.string(), zod.unknown()).optional(),
+  "extraction_status": zod.enum(['legacy', 'processing', 'extracted', 'fallback']).optional(),
+  "extraction_error": zod.union([zod.literal(null),zod.literal('not_configured'),zod.literal('unavailable'),zod.literal('invalid_response'),zod.literal('unsupported_file')]).nullish()
 })
 
 
@@ -121,7 +135,8 @@ export const UpdateMemoryBody = zod.object({
   "amount": zod.number().min(updateMemoryBodyAmountMin).nullish(),
   "currency": zod.string().max(updateMemoryBodyCurrencyMax).nullish(),
   "people": zod.array(zod.string()).max(updateMemoryBodyPeopleMax).optional(),
-  "tags": zod.array(zod.string()).max(updateMemoryBodyTagsMax).optional()
+  "tags": zod.array(zod.string()).max(updateMemoryBodyTagsMax).optional(),
+  "extra": zod.record(zod.string(), zod.unknown()).optional()
 })
 
 export const UpdateMemoryResponse = zod.object({
@@ -138,7 +153,10 @@ export const UpdateMemoryResponse = zod.object({
   "confidence": zod.number().int(),
   "status": zod.enum(['confirmed', 'needs_review']),
   "file_path": zod.string().nullable(),
-  "created_at": zod.string()
+  "created_at": zod.string(),
+  "extra": zod.record(zod.string(), zod.unknown()).optional(),
+  "extraction_status": zod.enum(['legacy', 'processing', 'extracted', 'fallback']).optional(),
+  "extraction_error": zod.union([zod.literal(null),zod.literal('not_configured'),zod.literal('unavailable'),zod.literal('invalid_response'),zod.literal('unsupported_file')]).nullish()
 })
 
 
@@ -147,6 +165,13 @@ export const DeleteMemoryParams = zod.object({
 })
 
 export const DeleteMemoryResponse = zod.void()
+
+
+export const DownloadMemoryCalendarParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const DownloadMemoryCalendarResponse = zod.unknown()
 
 
 export const requestUploadUrlBodyNameMax = 255;

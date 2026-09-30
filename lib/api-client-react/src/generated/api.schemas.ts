@@ -76,6 +76,31 @@ export const MemoryStatus = {
   needs_review: 'needs_review',
 } as const;
 
+export type MemoryExtra = { [key: string]: unknown };
+
+export type MemoryExtractionStatus = typeof MemoryExtractionStatus[keyof typeof MemoryExtractionStatus];
+
+
+export const MemoryExtractionStatus = {
+  legacy: 'legacy',
+  processing: 'processing',
+  extracted: 'extracted',
+  fallback: 'fallback',
+} as const;
+
+/**
+ * @nullable
+ */
+export type MemoryExtractionError = typeof MemoryExtractionError[keyof typeof MemoryExtractionError] | null;
+
+
+export const MemoryExtractionError = {
+  not_configured: 'not_configured',
+  unavailable: 'unavailable',
+  invalid_response: 'invalid_response',
+  unsupported_file: 'unsupported_file',
+} as const;
+
 export interface Memory {
   id: number;
   type: MemoryType;
@@ -96,7 +121,19 @@ export interface Memory {
   /** @nullable */
   file_path: string | null;
   created_at: string;
+  extra?: MemoryExtra;
+  extraction_status?: MemoryExtractionStatus;
+  /** @nullable */
+  extraction_error?: MemoryExtractionError;
 }
+
+export type MemoryInputLanguage = typeof MemoryInputLanguage[keyof typeof MemoryInputLanguage];
+
+
+export const MemoryInputLanguage = {
+  en: 'en',
+  ar: 'ar',
+} as const;
 
 export interface MemoryInput {
   /** @maxLength 100000 */
@@ -105,7 +142,12 @@ export interface MemoryInput {
   title?: string;
   /** @nullable */
   file_path?: string | null;
+  language?: MemoryInputLanguage;
+  /** @maxLength 100 */
+  timezone?: string;
 }
+
+export type MemoryUpdateExtra = { [key: string]: unknown };
 
 export interface MemoryUpdate {
   /**
@@ -138,6 +180,7 @@ export interface MemoryUpdate {
   people?: string[];
   /** @maxItems 50 */
   tags?: string[];
+  extra?: MemoryUpdateExtra;
 }
 
 export interface MemoryStats {
@@ -153,7 +196,16 @@ export interface HealthStatus {
 export type ListMemoriesParams = {
 type?: string;
 search?: string;
+status?: ListMemoriesStatus;
 };
+
+export type ListMemoriesStatus = typeof ListMemoriesStatus[keyof typeof ListMemoriesStatus];
+
+
+export const ListMemoriesStatus = {
+  confirmed: 'confirmed',
+  needs_review: 'needs_review',
+} as const;
 
 export type GetCurrentAuthUser200 = {
   user: AuthUser | null;

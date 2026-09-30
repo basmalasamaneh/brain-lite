@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp, doublePrecision } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, doublePrecision, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -17,6 +17,9 @@ export const memoriesTable = pgTable("memories", {
   confidence: integer("confidence").notNull().default(0),
   status: text("status", { enum: ["confirmed", "needs_review"] }).notNull().default("needs_review"),
   file_path: text("file_path"),
+  extra: jsonb("extra").$type<Record<string, unknown>>().notNull().default({}),
+  extraction_status: text("extraction_status", { enum: ["legacy", "processing", "extracted", "fallback"] }).notNull().default("legacy"),
+  extraction_error: text("extraction_error", { enum: ["not_configured", "unavailable", "invalid_response", "unsupported_file"] }),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
