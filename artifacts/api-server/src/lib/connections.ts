@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { db, pool, memoriesTable, memoryLinksTable } from "@workspace/db";
 import { and, eq, inArray } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { publicMemory } from "./semantic-search";
 import { canonicalPair, mergedStatus, preferredConnectionPayload } from "./connections-utils";
 import type { PoolClient } from "pg";
@@ -13,11 +14,17 @@ export function initializeConnections(): Promise<void> {
       try { migration = await readFile(path, "utf8"); break; } catch { /* bundled/source layout */ }
     }
     if (!migration) throw new Error("CONNECTIONS_MIGRATION_MISSING");
+    let freshnessMigration: string | undefined;
+    for (const path of [new URL("./connections-freshness-migration.sql", import.meta.url), new URL("../../../../lib/db/migrations/0007_connection_freshness.sql", import.meta.url)]) {
+      try { freshnessMigration = await readFile(path, "utf8"); break; } catch { /* bundled/source layout */ }
+    }
+    if (!freshnessMigration) throw new Error("CONNECTIONS_FRESHNESS_MIGRATION_MISSING");
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
       await client.query("SELECT pg_advisory_xact_lock(768001)");
       await client.query(migration);
+      await client.query(freshnessMigration);
       await client.query("COMMIT");
     } catch (error) { await client.query("ROLLBACK"); throw error; }
     finally { client.release(); }
@@ -41,19 +48,22 @@ export async function ownerTransaction<T>(userId: string, action: (client: PoolC
   finally { client.release(); }
 }
 export async function connectionRows(userId: string, filter: { memoryId?: number; id?: number; suggestions?: boolean } = {}) {
-  const links = await db.select().from(memoryLinksTable).where(and(
+  // One statement snapshot: never combine pre-edit reasons with post-edit content.
+  const a = alias(memoriesTable, "connection_memory_a");
+  const b = alias(memoriesTable, "connection_memory_b");
+  const rows = await db.select({ link: memoryLinksTable, a, b }).from(memoryLinksTable)
+    .innerJoin(a, and(eq(a.id, memoryLinksTable.memory_a_id), eq(a.userId, memoryLinksTable.userId)))
+    .innerJoin(b, and(eq(b.id, memoryLinksTable.memory_b_id), eq(b.userId, memoryLinksTable.userId)))
+    .where(and(
     eq(memoryLinksTable.userId, userId),
     filter.id !== undefined ? eq(memoryLinksTable.id, filter.id) : undefined,
     filter.suggestions ? eq(memoryLinksTable.status, "suggested") : undefined,
   ));
-  const selected = links.filter((link) => filter.memoryId === undefined || link.memory_a_id === filter.memoryId || link.memory_b_id === filter.memoryId);
-  const ids = [...new Set(selected.flatMap((link) => [link.memory_a_id, link.memory_b_id]))];
-  const memories = ids.length ? await db.select().from(memoriesTable).where(and(eq(memoriesTable.userId, userId), inArray(memoriesTable.id, ids))) : [];
-  const byId = new Map(memories.map((m) => [m.id, publicMemory(m)]));
-  return selected.filter((link) => byId.has(link.memory_a_id) && byId.has(link.memory_b_id)).map(({ userId: _owner, memory_a_id, memory_b_id, ...link }) => ({
-    ...link, memory_a: byId.get(memory_a_id)!, memory_b: byId.get(memory_b_id)!,
-    created_at: link.created_at.toISOString(), updated_at: link.updated_at.toISOString(),
-  })).sort((a, b) => b.confidence - a.confidence || b.id - a.id);
+  return rows.filter(({ link }) => filter.memoryId === undefined || link.memory_a_id === filter.memoryId || link.memory_b_id === filter.memoryId)
+    .map(({ link: { userId: _owner, memory_a_id: _a, memory_b_id: _b, ...link }, a, b }) => ({
+      ...link, memory_a: publicMemory(a), memory_b: publicMemory(b),
+      created_at: link.created_at.toISOString(), updated_at: link.updated_at.toISOString(),
+    })).sort((a, b) => b.confidence - a.confidence || b.id - a.id);
 }
 export async function requireMemory(userId: string, id: number) {
   const [memory] = await db.select().from(memoriesTable).where(and(eq(memoriesTable.userId, userId), eq(memoriesTable.id, id)));
@@ -82,6 +92,11 @@ export async function manualConnection(userId: string, id: number, other: number
 }
 export async function changeConnection(userId: string, id: number, status: "confirmed" | "dismissed") {
   await ownerTransaction(userId, async (client) => {
+    const initial = (await client.query("SELECT memory_a_id,memory_b_id FROM memory_links WHERE id=$1 AND user_id=$2", [id, userId])).rows[0];
+    if (!initial) throw new ConnectionError(404, "Connection not found");
+    // Memory-first ordering also protects against writes outside the HTTP path.
+    await client.query("SELECT id FROM memories WHERE user_id=$1 AND id=ANY($2::int[]) ORDER BY id FOR UPDATE",
+      [userId, [initial.memory_a_id, initial.memory_b_id]]);
     const result = await client.query("SELECT status FROM memory_links WHERE id=$1 AND user_id=$2 FOR UPDATE", [id, userId]);
     if (!result.rowCount) throw new ConnectionError(404, "Connection not found");
     if (result.rows[0].status === "dismissed" && status !== "dismissed") throw new ConnectionError(409, "Dismissed connections cannot be restored");
@@ -100,6 +115,9 @@ export async function mergeConnection(userId: string, id: number, keepId: number
     // Lock memories first, matching indexing/edit lock order; no content fields are overwritten.
     const locked = await client.query("SELECT id FROM memories WHERE user_id=$1 AND id=ANY($2::int[]) ORDER BY id FOR UPDATE", [userId, [keepId, loser]]);
     if (locked.rowCount !== 2) throw new ConnectionError(404, "Memory not found");
+    const current = (await client.query("SELECT * FROM memory_links WHERE id=$1 AND user_id=$2 FOR UPDATE", [id, userId])).rows[0];
+    if (!current) throw new ConnectionError(404, "Connection not found");
+    if (current.relation_type !== "duplicate" || current.status === "dismissed") throw new ConnectionError(409, "Only active duplicate connections can be merged");
     const links = await client.query("SELECT * FROM memory_links WHERE user_id=$1 AND (memory_a_id=$2 OR memory_b_id=$2) ORDER BY id FOR UPDATE", [userId, loser]);
     for (const moved of links.rows) {
       const other = moved.memory_a_id === loser ? moved.memory_b_id : moved.memory_a_id;

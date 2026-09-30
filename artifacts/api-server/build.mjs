@@ -120,6 +120,7 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
   });
   await copyFile(path.resolve(artifactDir, "../../lib/db/migrations/0003_semantic_search.sql"), path.join(distDir, "semantic-migration.sql"));
   await copyFile(path.resolve(artifactDir, "../../lib/db/migrations/0004_connections.sql"), path.join(distDir, "connections-migration.sql"));
+  await copyFile(path.resolve(artifactDir, "../../lib/db/migrations/0007_connection_freshness.sql"), path.join(distDir, "connections-freshness-migration.sql"));
   await copyFile(path.resolve(artifactDir, "../../lib/db/migrations/0005_spaces.sql"), path.join(distDir, "spaces-migration.sql"));
   await copyFile(path.resolve(artifactDir, "../../lib/db/migrations/0006_notifications.sql"), path.join(distDir, "notifications-migration.sql"));
 }

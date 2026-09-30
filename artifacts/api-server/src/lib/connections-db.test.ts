@@ -79,7 +79,9 @@ test("disposable DB: one-hop scope, canonical transfer, shared uploads, durable 
       "edit does not enqueue unready version");
     await pool.query("UPDATE memory_embedding_jobs SET indexed_version=version WHERE memory_id=$1", [keep]);
     const next = (await pool.query("SELECT * FROM connection_discovery_jobs WHERE memory_id=$1 AND user_id=$2", [keep, owner])).rows[0];
-    assert.equal(next.version, version.version); assert.ok(Number(next.generation) > Number(ready.generation));
+    assert.equal(next.version, ready.version);
+    assert.equal(next.explicit, false); assert.equal(next.completed, true);
+    assert.ok(Number(next.generation) > Number(ready.generation), "edit fences prior explicit generation without auto-off requeue");
     // Concurrent interactive requests serialize a durable per-account budget.
     // This never touches the global worker counter used by concurrent fixtures.
     const reservations = await Promise.all(Array.from({ length: 40 }, () => reserveAiBudget(owner)));

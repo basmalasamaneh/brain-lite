@@ -57,7 +57,7 @@ export async function queueDiscovery(userId: string, explicit: boolean, client?:
       await tx.query(`INSERT INTO connection_discovery_jobs(memory_id,user_id,version,explicit,next_attempt_at)
         VALUES($1,$2,$3,$4,now()+($5*interval '8 seconds'))
         ON CONFLICT(memory_id) DO UPDATE SET version=EXCLUDED.version,generation=connection_discovery_jobs.generation+1,
-          explicit=connection_discovery_jobs.explicit OR EXCLUDED.explicit,forgotten=false,completed=false,
+          explicit=EXCLUDED.explicit,forgotten=false,completed=false,
           attempts=0,next_attempt_at=EXCLUDED.next_attempt_at,lease_until=NULL,lease_token=NULL,last_error=NULL`,
       [memory.id, userId, memory.version, explicit, index]);
     }
@@ -69,7 +69,7 @@ export async function queueDiscovery(userId: string, explicit: boolean, client?:
         ORDER BY m.created_at,m.id LIMIT 1`, [userId])).rows[0];
       if (idea) await tx.query(`INSERT INTO connection_discovery_jobs(memory_id,user_id,version,forgotten)
         VALUES($1,$2,$3,true) ON CONFLICT(memory_id) DO UPDATE SET version=EXCLUDED.version,
-          generation=connection_discovery_jobs.generation+1,forgotten=true,completed=false,attempts=0,
+          generation=connection_discovery_jobs.generation+1,explicit=false,forgotten=true,completed=false,attempts=0,
           next_attempt_at=now(),lease_until=NULL,lease_token=NULL,last_error=NULL`, [idea.id, userId, idea.version]);
     }
     await tx.query(`UPDATE connection_settings SET scan_cursor=$2,
@@ -122,7 +122,7 @@ export async function scheduleWeeklyDiscovery(options?: {
   }
 }
 type Job = { memory_id: number; user_id: string; version: string; generation: string; attempts: number; forgotten: boolean; explicit: boolean };
-export async function processConnectionJob() {
+export async function processConnectionJob(options?: { memoryIds: number[] }) {
   const token = randomUUID();
   const result = await pool.query(`WITH candidate AS (
     SELECT d.memory_id FROM connection_discovery_jobs d JOIN memories m ON m.id=d.memory_id AND m.user_id=d.user_id
@@ -131,10 +131,11 @@ export async function processConnectionJob() {
     WHERE NOT d.completed AND d.next_attempt_at<=now() AND (d.lease_until IS NULL OR d.lease_until<now())
       AND (d.explicit OR coalesce(s.automatic,true)) AND m.embedding IS NOT NULL
       AND j.version=j.indexed_version AND d.version=j.version
+      AND ($2::int[] IS NULL OR d.memory_id=ANY($2::int[]))
       AND coalesce((SELECT used FROM connection_daily_usage WHERE user_id=d.user_id AND day=(now() AT TIME ZONE 'UTC')::date),0)<3
     ORDER BY d.forgotten DESC,d.next_attempt_at,d.memory_id FOR UPDATE OF d SKIP LOCKED LIMIT 1)
     UPDATE connection_discovery_jobs d SET lease_token=$1,lease_until=now()+interval '90 seconds'
-    FROM candidate c WHERE d.memory_id=c.memory_id RETURNING d.*`, [token]);
+    FROM candidate c WHERE d.memory_id=c.memory_id RETURNING d.*`, [token, options?.memoryIds ?? null]);
   const job = result.rows[0] as Job | undefined;
   if (!job) return false;
   if (deletingUsers.has(job.user_id)) {
@@ -196,7 +197,7 @@ export async function processConnectionJob() {
         if (saved.rowCount) used++;
       }
       await client.query("UPDATE connection_daily_usage SET used=$2 WHERE user_id=$1 AND day=(now() AT TIME ZONE 'UTC')::date", [job.user_id, used]);
-      await client.query(`UPDATE connection_discovery_jobs SET completed=true,lease_token=NULL,lease_until=NULL,last_error=NULL
+      await client.query(`UPDATE connection_discovery_jobs SET completed=true,explicit=false,lease_token=NULL,lease_until=NULL,last_error=NULL
         WHERE memory_id=$1 AND user_id=$2 AND generation=$3 AND lease_token=$4`, [job.memory_id, job.user_id, job.generation, token]);
     });
   } catch (error) {

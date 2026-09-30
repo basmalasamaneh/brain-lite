@@ -24,6 +24,8 @@ import SpacesPage from '@/pages/spaces';
 import SpaceDetailPage from '@/pages/space-detail';
 import { NotificationCenter } from '@/components/notifications';
 import { useToast } from '@/hooks/use-toast';
+import { clearDeferredConnections } from '@/lib/deferred-connections';
+import { connectionText } from '@/lib/i18n-connections';
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } } });
 
@@ -31,17 +33,23 @@ const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, ref
 function AuthCacheSync() {
   const { user, isLoading } = useAuth();
   const qc = useQueryClient();
+  const { toast } = useToast();
+  const { lang } = useI18n();
   const prev = useRef<string | null | undefined>(undefined);
   const id = user?.id ?? null;
   useEffect(() => {
     if (isLoading) return;
     if (prev.current !== undefined && prev.current !== id) {
+      if (prev.current) {
+        try { clearDeferredConnections(prev.current); }
+        catch { toast({ variant: 'destructive', title: connectionText(lang, 'laterError'), description: connectionText(lang, 'laterClearError') }); }
+      }
       qc.clear();
       if ('serviceWorker' in navigator) void navigator.serviceWorker.getRegistration(import.meta.env.BASE_URL).then(registration => registration?.active?.postMessage({ type: 'BRAIN_LITE_CLEAR_NOTIFICATIONS' })).catch(() => undefined);
     }
     askSession.setOwner(id);
     prev.current = id;
-  }, [id, isLoading, qc]);
+  }, [id, isLoading, qc, lang, toast]);
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
     const refresh = (event: MessageEvent) => {

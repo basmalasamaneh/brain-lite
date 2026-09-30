@@ -123,15 +123,14 @@ export function ConnectionDeck() {
     setDirection((choice === 'dismiss' ? -1 : 1) * (lang === 'ar' ? -1 : 1));
     haptic();
     if (choice === 'later') {
-      deferred.defer(current.id);
-      toast({ title: c('laterToast') });
+      if (deferred.defer(current.id)) toast({ title: c('laterToast'), description: c('laterHint') });
     } else action.mutate({ action: choice, id: current.id }, { onSuccess: () => setHandled((old) => [...old, current.id]) });
   };
   return <section className="min-w-0" data-testid="section-connection-deck">
     {query.isLoading ? <Skeleton className="h-64 rounded-2xl" /> : query.isError ? <LoadError retry={() => query.refetch()} /> : !current ? <Surface className="p-5">
       <h2 className="flex items-center gap-2 font-display text-xl"><Link2 className="h-5 w-5 text-gold" />{c('possible')}</h2>
       <p className="mt-2 text-sm text-muted-foreground" data-testid="text-connections-empty">{c(suggestions.some((s) => deferred.ids.includes(s.id)) ? 'deferred' : 'empty')}</p>
-      {suggestions.some((s) => deferred.ids.includes(s.id)) && <button className={cn(btnGhost, 'mt-3')} data-testid="button-review-deferred-connections" onClick={() => { deferred.reset(); progress.current.ids = available.map((s) => s.id); toast({ title: c('review') }); }}>{c('review')}</button>}
+      {suggestions.some((s) => deferred.ids.includes(s.id)) && <button className={cn(btnGhost, 'mt-3')} data-testid="button-review-deferred-connections" onClick={() => { if (!deferred.reset()) return; progress.current.ids = available.map((s) => s.id); toast({ title: c('review') }); }}>{c('review')}</button>}
     </Surface> : <div className="relative isolate pb-2">
       {available.length > 1 && <div aria-hidden className="absolute inset-x-3 bottom-0 top-3 -z-10 rounded-2xl border border-gold-400/40 bg-gold-soft" />}
       <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-gold-300 via-gold-500 to-gold-300/30 p-[1px]">

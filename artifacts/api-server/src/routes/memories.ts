@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/node-postgres";
 import { db, memoriesTable, uploadsTable } from "@workspace/db";
 import {
   CreateMemoryBody, UpdateMemoryBody, GetMemoryParams,
@@ -14,7 +15,7 @@ import rateLimit from "express-rate-limit";
 import { validDateFilter } from "../lib/semantic-utils";
 import { confirmCaptured, requireSpace } from "../lib/spaces";
 import { spaceIdBody } from "../lib/spaces-utils";
-import { ConnectionError } from "../lib/connections";
+import { ConnectionError, ownerTransaction } from "../lib/connections";
 
 const router: IRouter = Router();
 const captureLimiter = rateLimit({ windowMs: 60 * 60 * 1000, limit: 30,
@@ -180,9 +181,10 @@ router.patch("/memories/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Extra details are too large" }); return;
   }
   if (!Object.keys(parsed.data).length) { res.status(400).json({ error: "No changes provided" }); return; }
-  const [row] = await db.update(memoriesTable).set(parsed.data).where(and(
-    eq(memoriesTable.id, params.data.id), eq(memoriesTable.userId, req.user.id),
-  )).returning();
+  const userId = req.user.id;
+  const [row] = await ownerTransaction(userId, (client) => drizzle(client).update(memoriesTable).set(parsed.data).where(and(
+    eq(memoriesTable.id, params.data.id), eq(memoriesTable.userId, userId),
+  )).returning());
   if (!row) { res.status(404).json({ error: "Memory not found" }); return; }
   res.json(GetMemoryResponse.parse(serialize(row)));
 });

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@workspace/replit-auth-web';
 import {
@@ -9,6 +10,7 @@ export type { Connection, RelationType } from '@workspace/api-client-react';
 import { useToast } from '@/hooks/use-toast';
 import { useI18n } from '@/lib/i18n';
 import { connectionText, type ConnectionTextKey } from '@/lib/i18n-connections';
+import { clearDeferredConnections, deferredConnectionsKey, readDeferredConnections, saveDeferredConnection } from '@/lib/deferred-connections';
 
 type ConnectionAction =
   | { action: 'confirm' | 'dismiss' | 'remove'; id: number }
@@ -83,15 +85,56 @@ export function useConnectionAction() {
   });
 }
 
-// Local, owner-scoped deferral. Later never sends a dismiss request.
+// Browser-local, owner-scoped deferral. Later never sends a dismiss request.
 export function useDeferredConnections() {
   const { user } = useAuth();
   const qc = useQueryClient();
-  const key = ['/local/connections/deferred', user?.id];
-  const query = useQuery<number[]>({ queryKey: key, queryFn: () => [], initialData: [], enabled: false, staleTime: Infinity, gcTime: Infinity });
+  const { toast } = useToast();
+  const { lang } = useI18n();
+  const owner = user?.id;
+  const key = ['/local/connections/deferred', owner];
+  const load = () => {
+    try { return { ids: owner ? readDeferredConnections(owner) : [], error: false }; }
+    catch { return { ids: [] as number[], error: true }; }
+  };
+  const query = useQuery({
+    queryKey: key, queryFn: load, initialData: load,
+    enabled: false, staleTime: Infinity, gcTime: Infinity,
+  });
+  const persistenceError = () => toast({
+    variant: 'destructive', title: connectionText(lang, 'laterError'),
+    description: connectionText(lang, 'laterErrorBody'),
+  });
+  useEffect(() => {
+    if (query.data.error) persistenceError();
+  }, [query.data.error, lang]);
+  useEffect(() => {
+    if (!owner) return;
+    // Rehydrate on remount too: another tab may have changed storage while this
+    // deck was not mounted and its query cache was still retained.
+    qc.setQueryData(['/local/connections/deferred', owner], load());
+    const refresh = (event: StorageEvent) => {
+      if (event.key === null || event.key === deferredConnectionsKey(owner)) {
+        qc.setQueryData(['/local/connections/deferred', owner], load());
+      }
+    };
+    window.addEventListener('storage', refresh);
+    return () => window.removeEventListener('storage', refresh);
+  }, [owner, qc]);
+  const update = (id?: number) => {
+    if (!owner) { persistenceError(); return false; }
+    try {
+      const ids = id === undefined ? (clearDeferredConnections(owner), []) : saveDeferredConnection(owner, id);
+      qc.setQueryData(key, { ids, error: false });
+      return true;
+    } catch {
+      persistenceError();
+      return false;
+    }
+  };
   return {
-    ids: query.data,
-    defer: (id: number) => qc.setQueryData<number[]>(key, (old = []) => [...new Set([...old, id])]),
-    reset: () => qc.setQueryData(key, []),
+    ids: owner ? query.data.ids : [],
+    defer: (id: number) => update(id),
+    reset: () => update(),
   };
 }
