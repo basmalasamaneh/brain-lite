@@ -1,6 +1,9 @@
 import { useRef, useState, type DragEvent } from 'react';
 import { Link, useLocation } from 'wouter';
-import { Camera, FileText, ImageIcon, Loader2, Lock, ShieldCheck, UploadCloud, X } from 'lucide-react';
+import { Camera, Check, FileText, ImageIcon, Loader2, Lock, PenLine, ShieldCheck, UploadCloud, X } from 'lucide-react';
+import { InfoTip } from '@/components/kit';
+import { IconCircle } from '@/components/brand';
+import { SuccessCheck } from '@/components/motion';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useCreateMemory, useRequestUploadUrl, type UploadUrlRequestContentType } from '@workspace/api-client-react';
 import { useI18n, usePageTitle, type TKey } from '@/lib/i18n';
@@ -37,9 +40,10 @@ export default function CapturePage() {
   const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState<TKey | null>(null);
   const [dragging, setDragging] = useState(false);
-  const [phase, setPhase] = useState<'idle' | 'uploading' | 'saving'>('idle');
+  const [phase, setPhase] = useState<'idle' | 'uploading' | 'saving' | 'saved'>('idle');
   const fileInput = useRef<HTMLInputElement>(null);
   const cameraInput = useRef<HTMLInputElement>(null);
+  const textRef = useRef<HTMLTextAreaElement>(null);
   const busy = phase !== 'idle';
   const inFlight = useRef(false);
   const uploaded = useRef<{ file: File; path: string } | null>(null);
@@ -98,8 +102,8 @@ export default function CapturePage() {
       onSuccess: (m) => {
         invalidate(m.id);
         uploaded.current = null;
-        setTitle(''); setText(''); clearFile(); setPhase('idle'); inFlight.current = false;
-        toast({ title: t('savedPlain') });
+        setTitle(''); setText(''); clearFile(); setPhase('saved'); inFlight.current = false;
+        toast({ title: <span className="flex items-center gap-2.5"><SuccessCheck className="h-7 w-7 shrink-0" />{t('savedPlain')}</span> });
         navigate(`/memories/${m.id}`);
       },
       onError: () => { setError('errSave'); setPhase('idle'); inFlight.current = false; },
@@ -107,68 +111,108 @@ export default function CapturePage() {
   };
 
   const isPdf = file && resolveType(file) === 'application/pdf';
+  const stepIdx = phase === 'uploading' ? 0 : phase === 'saving' ? 1 : phase === 'saved' ? 2 : -1;
+  const steps: TKey[] = ['stepCapture', 'stepUnderstanding', 'stepSaved'];
+  const options: { k: TKey; hint: TKey; icon: typeof PenLine; onClick: () => void; id: string }[] = [
+    { k: 'optWrite', hint: 'optWriteHint', icon: PenLine, onClick: () => textRef.current?.focus(), id: 'write' },
+    { k: 'optPhoto', hint: 'optPhotoHint', icon: Camera, onClick: () => cameraInput.current?.click(), id: 'photo' },
+    { k: 'optFile', hint: 'optFileHint', icon: FileText, onClick: () => fileInput.current?.click(), id: 'file' },
+  ];
 
   return (
     <>
       <SampleBanner />
-      <PageHeader title={t('captureTitle')} lead={t('captureLead')} />
+      <PageHeader eyebrow={t('captureEyebrow')} title={t('captureTitle')} lead={t('captureLead')} />
+
+      <div className="rise mb-6 grid grid-cols-3 gap-2 sm:gap-4" role="group" aria-label={t('captureTitle')}>
+        {options.map(({ k, hint, icon, onClick, id }) => (
+          <button key={id} type="button" onClick={onClick} disabled={busy} data-testid={`button-option-${id}`}
+            className="lift group flex min-h-24 min-w-0 flex-col items-center gap-2 rounded-2xl border border-card-border bg-card p-3 text-center soft-shadow hover:border-gold-400/60 active:scale-[0.97] disabled:opacity-50 sm:flex-row sm:p-4 sm:text-start">
+            <IconCircle icon={icon} className="transition group-hover:scale-105" />
+            <span className="min-w-0">
+              <span className="block font-display text-lg leading-tight">{t(k)}</span>
+              <span className="hidden truncate text-xs text-muted-foreground sm:block">{t(hint)}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {stepIdx >= 0 && (
+        <ol className="rise mb-5 flex items-center gap-2 rounded-2xl border border-gold-400/40 bg-gold-soft/60 p-3 sm:p-4" aria-label={t('progressLabel')} aria-live="polite" data-testid="capture-steps">
+          {steps.map((k, i) => {
+            const done = i < stepIdx || phase === 'saved';
+            const active = i === stepIdx && phase !== 'saved';
+            return (
+              <li key={k} className="flex min-w-0 flex-1 items-center gap-2" aria-current={active ? 'step' : undefined}>
+                <span className={cn('grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-semibold tabular-nums ring-1',
+                  done ? 'bg-success text-[hsl(44_60%_97%)] ring-success' : active ? 'gold-gradient text-gold-ink ring-gold-400' : 'bg-card text-muted-foreground ring-border')}>
+                  {done ? <Check className="h-4 w-4" strokeWidth={2.5} /> : active ? <Loader2 className="h-4 w-4 animate-spin" /> : i + 1}
+                </span>
+                <span className={cn('truncate text-xs font-medium sm:text-sm', active ? 'text-foreground' : 'text-muted-foreground')}>{t(k)}</span>
+                {i < 2 && <span className={cn('hidden h-px flex-1 sm:block', done ? 'bg-success/60' : 'bg-gold-400/40')} aria-hidden />}
+              </li>
+            );
+          })}
+        </ol>
+      )}
       {phase === 'saving' && <div className="mb-5"><UnderstandingSkeleton /></div>}
+
       <form onSubmit={(e) => { e.preventDefault(); submit(); }} className="rise grid gap-5 lg:grid-cols-[1.3fr_1fr]" style={{ animationDelay: '80ms' }} noValidate>
-        <Surface className="space-y-5 p-5 sm:p-7">
+        <Surface className="min-w-0 space-y-5 p-5 sm:p-7">
           <label className="block">
-            <span className="mb-1.5 flex flex-wrap items-baseline gap-2 text-sm font-medium">{t('titleLabel')}<span className="text-xs font-normal text-muted-foreground">{t('titleOptional')}</span></span>
+            <span className="mb-1.5 flex flex-wrap items-center gap-2 text-sm font-medium">{t('titleLabel')}<span className="text-xs font-normal text-muted-foreground">{t('titleOptional')}</span><InfoTip text={t('tipTitleOptional')} /></span>
             <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} disabled={busy} className={fieldCls} data-testid="input-title" />
           </label>
           <label className="block">
             <span className="mb-1.5 block text-sm font-medium">{t('textLabel')}</span>
-            <textarea value={text} onChange={(e) => { setText(e.target.value); if (error === 'errNothing') setError(null); }} rows={9} maxLength={100000} disabled={busy}
+            <textarea ref={textRef} value={text} onChange={(e) => { setText(e.target.value); if (error === 'errNothing') setError(null); }} rows={9} maxLength={100000} disabled={busy}
               placeholder={t('textPlaceholder')} className={cn(fieldCls, 'resize-y leading-relaxed')} data-testid="input-text" />
           </label>
+          <p className="flex items-center gap-2 text-xs text-muted-foreground"><span className="h-1.5 w-1.5 shrink-0 rotate-45 bg-gold-400" aria-hidden />{t('captureHint')}</p>
         </Surface>
 
-        <div className="space-y-5">
+        <div className="min-w-0 space-y-5">
           <Surface className="p-5 sm:p-6">
             <span className="mb-3 block text-sm font-medium">{t('fileLabel')}</span>
             {file ? (
-              <div className="rise flex items-center gap-3 rounded-xl border border-border bg-background/60 p-3" data-testid="file-selected">
-                {preview ? <img src={preview} alt="" className="h-16 w-16 rounded-lg object-cover" />
-                  : <span className="grid h-16 w-16 place-items-center rounded-lg bg-lavender text-primary">{isPdf ? <FileText className="h-6 w-6" /> : <ImageIcon className="h-6 w-6" />}</span>}
+              <div className="rise flex min-w-0 items-center gap-3 rounded-xl border border-gold-400/40 bg-gold-soft/40 p-3" data-testid="file-selected">
+                {preview ? <img src={preview} alt="" className="h-16 w-16 shrink-0 rounded-lg object-cover" />
+                  : <span className="grid h-16 w-16 shrink-0 place-items-center rounded-lg bg-gold-soft text-gold">{isPdf ? <FileText className="h-6 w-6" strokeWidth={1.5} /> : <ImageIcon className="h-6 w-6" strokeWidth={1.5} />}</span>}
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{file.name}</p>
-                  <p className="text-xs text-muted-foreground">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                  <p className="text-xs text-muted-foreground tabular-nums">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
                 </div>
-                <button type="button" onClick={clearFile} disabled={busy} className="rounded-lg p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground" aria-label={t('removeFile')} data-testid="button-remove-file"><X className="h-4 w-4" /></button>
+                <button type="button" onClick={clearFile} disabled={busy} className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-muted-foreground transition hover:bg-gold-soft hover:text-foreground" aria-label={t('removeFile')} data-testid="button-remove-file"><X className="h-4 w-4" /></button>
               </div>
             ) : (
               <div onDragOver={(e) => { e.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={onDrop}
-                className={cn('flex flex-col items-center gap-2 rounded-xl border-2 border-dashed px-4 py-8 text-center transition',
-                  dragging ? 'scale-[1.01] border-primary bg-lavender' : 'border-border')} data-testid="dropzone">
-                <UploadCloud className={cn('h-8 w-8 transition', dragging ? '-translate-y-1 text-primary' : 'text-muted-foreground')} />
-                <p className="text-sm">{t('dropHere')}{' '}
-                  <button type="button" onClick={() => fileInput.current?.click()} disabled={busy} className="font-semibold text-primary underline-offset-4 hover:underline" data-testid="button-browse">{t('browse')}</button>
+                className={cn('pattern-star flex flex-col items-center gap-2 overflow-hidden rounded-xl border-2 border-dashed px-4 py-8 text-center transition',
+                  dragging ? 'scale-[1.01] border-gold-500 bg-gold-soft' : 'border-gold-400/40')} data-testid="dropzone">
+                <UploadCloud className={cn('h-8 w-8 transition', dragging ? '-translate-y-1 text-gold' : 'text-gold/70')} strokeWidth={1.5} />
+                <p className="text-sm">{dragging ? t('dropRelease') : t('dropHere')}{' '}
+                  {!dragging && <button type="button" onClick={() => fileInput.current?.click()} disabled={busy} className="inline-flex min-h-11 items-center font-semibold text-gold underline-offset-4 hover:underline" data-testid="button-browse">{t('browse')}</button>}
                 </p>
                 <p className="text-xs text-muted-foreground">{t('fileHint')}</p>
               </div>
             )}
             <input ref={fileInput} type="file" accept={ACCEPTED.join(',') + ',.heic'} className="hidden" onChange={(e) => pick(e.target.files?.[0])} data-testid="input-file" />
             <input ref={cameraInput} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => pick(e.target.files?.[0])} data-testid="input-camera" />
-            <button type="button" onClick={() => cameraInput.current?.click()} disabled={busy} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-lavender py-2.5 text-sm font-medium text-primary transition active:scale-95 md:hidden" data-testid="button-camera">
-              <Camera className="h-4 w-4" />{t('takePhoto')}
-            </button>
           </Surface>
 
-          {error && <p role="alert" className="rise rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive" data-testid="text-error">{t(error)}</p>}
+          {error && <p role="alert" className="rise rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-danger-ink" data-testid="text-error">{t(error)}</p>}
 
-          {!authLoading && !isAuthenticated ? (
-            <button type="button" onClick={login} className={cn(btnPrimary, 'w-full py-3')} data-testid="button-login-save"><Lock className="h-4 w-4" />{t('loginToSave')}</button>
-          ) : (
-            <button type="submit" disabled={busy || authLoading} className={cn(btnPrimary, 'w-full py-3')} data-testid="button-save">
-              {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-              {phase === 'uploading' ? t('uploading') : phase === 'saving' ? t('understanding') : t('save')}
-            </button>
-          )}
-          <p className="flex items-start gap-2 rounded-xl bg-muted/50 px-3.5 py-2.5 text-xs leading-relaxed text-muted-foreground" data-testid="text-ai-notice"><ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />{t('aiNotice')}</p>
-          <Link href="/memories" className="block text-center text-sm text-muted-foreground hover:text-foreground" data-testid="link-to-memories">{t('navMemories')}</Link>
+          <div className="sticky bottom-24 z-20 -mx-1 rounded-2xl bg-background/90 p-1 backdrop-blur md:static md:mx-0 md:bg-transparent md:p-0">
+            {!authLoading && !isAuthenticated ? (
+              <button type="button" onClick={login} className={cn(btnPrimary, 'w-full py-3')} data-testid="button-login-save"><Lock className="h-4 w-4" />{t('loginToSave')}</button>
+            ) : (
+              <button type="submit" disabled={busy || authLoading} className={cn(btnPrimary, 'w-full py-3')} data-testid="button-save">
+                {busy && phase !== 'saved' && <Loader2 className="h-4 w-4 animate-spin" />}
+                {phase === 'uploading' ? t('uploading') : phase === 'saving' ? t('understanding') : phase === 'saved' ? t('savedPlain') : t('save')}
+              </button>
+            )}
+          </div>
+          <p className="flex items-start gap-2 rounded-xl bg-surface-alt px-3.5 py-2.5 text-xs leading-relaxed text-muted-foreground" data-testid="text-ai-notice"><ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gold" strokeWidth={1.5} />{t('aiNotice')}</p>
+          <Link href="/memories" className="flex min-h-11 items-center justify-center text-sm text-muted-foreground hover:text-foreground" data-testid="link-to-memories">{t('navMemories')}</Link>
         </div>
       </form>
     </>

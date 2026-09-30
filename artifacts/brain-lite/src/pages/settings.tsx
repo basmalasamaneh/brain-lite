@@ -10,7 +10,8 @@ import { useI18n, usePageTitle, type TKey } from '@/lib/i18n';
 import { useTheme, type ThemeChoice } from '@/lib/theme';
 import { askSession } from '@/lib/ask-session';
 import { useToast } from '@/hooks/use-toast';
-import { PageHeader, Surface, btnGhost, btnPrimary, fieldCls } from '@/components/kit';
+import { PageHeader, Skeleton, Surface, btnGhost, btnDanger, btnPrimary, fieldCls } from '@/components/kit';
+import { IconCircle } from '@/components/brand';
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 
@@ -25,7 +26,7 @@ function filenameFrom(header: string | null) {
 function Section({ icon: Icon, title, children }: { icon: typeof Sun; title: string; children: React.ReactNode }) {
   return (
     <Surface className="rise p-5 sm:p-6">
-      <h2 className="mb-4 flex items-center gap-2 font-display text-lg font-semibold"><Icon className="h-5 w-5 text-primary" />{title}</h2>
+      <h2 className="mb-5 flex items-center gap-3 font-display text-2xl"><IconCircle icon={Icon} size="sm" />{title}</h2>
       {children}
     </Surface>
   );
@@ -81,7 +82,7 @@ export default function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <PageHeader title={t('settingsTitle')} lead={t('settingsLead')} />
+      <PageHeader eyebrow={t('settingsEyebrow')} title={t('settingsTitle')} lead={t('settingsLead')} />
       <div className="space-y-4">
         <AccountSection />
         <Section icon={Palette} title={t('appearance')}>
@@ -89,7 +90,7 @@ export default function SettingsPage() {
           <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label={t('theme')}>
             {themes.map(({ v, icon: Icon, k }) => (
               <button key={v} role="radio" aria-checked={theme === v} onClick={() => setTheme(v)} data-testid={`button-settings-theme-${v}`}
-                className={cn('flex flex-col items-center gap-1.5 rounded-xl border p-3 text-sm font-medium transition', theme === v ? 'border-primary bg-lavender text-primary' : 'border-border hover:border-primary/30')}>
+                className={cn('flex flex-col items-center gap-1.5 min-h-11 rounded-xl border p-3 text-sm font-medium transition active:scale-[0.97]', theme === v ? 'border-gold-500 bg-gold-soft text-gold' : 'border-border hover:border-gold-400/60')}>
                 <Icon className="h-5 w-5" />{t(k)}
               </button>
             ))}
@@ -98,7 +99,7 @@ export default function SettingsPage() {
           <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label={t('language')}>
             {([['en', 'English'], ['ar', 'العربية']] as const).map(([v, label]) => (
               <button key={v} role="radio" aria-checked={lang === v} onClick={() => setLang(v)} data-testid={`button-settings-lang-${v}`}
-                className={cn('rounded-xl border p-3 text-sm font-medium transition', lang === v ? 'border-primary bg-lavender text-primary' : 'border-border hover:border-primary/30')}>
+                className={cn('min-h-11 rounded-xl border p-3 text-sm font-medium transition active:scale-[0.97]', lang === v ? 'border-gold-500 bg-gold-soft text-gold' : 'border-border hover:border-gold-400/60')}>
                 {label}
               </button>
             ))}
@@ -112,21 +113,21 @@ export default function SettingsPage() {
         </Section>
 
         <Section icon={Download} title={t('dataTitle')}>
-          {isLoading ? <div className="h-24 animate-pulse rounded-xl bg-muted" /> : !isAuthenticated ? (
+          {isLoading ? <Skeleton className="h-24" /> : !isAuthenticated ? (
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm text-muted-foreground">{t('loginForData')}</p>
             </div>
           ) : (
             <div className="divide-y divide-border">
               <div className="flex flex-wrap items-center justify-between gap-3 pb-5">
-                <div><p className="font-medium">{t('exportTitle')}</p><p className="text-sm text-muted-foreground">{t('exportBody')}</p></div>
+                <div className="min-w-0"><p className="font-medium">{t('exportTitle')}</p><p className="text-sm text-muted-foreground">{t('exportBody')}</p></div>
                 <button onClick={doExport} disabled={exporting} className={btnGhost} data-testid="button-export">
                   {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}{exporting ? t('exporting') : t('exportBtn')}
                 </button>
               </div>
               <div className="flex flex-wrap items-center justify-between gap-3 pt-5">
-                <div className="max-w-sm"><p className="font-medium text-destructive">{t('deleteAllTitle')}</p><p className="text-sm text-muted-foreground">{t('deleteAllBody')}</p></div>
-                <button onClick={() => { setTyped(''); setOpen(true); }} className={cn(btnGhost, 'border-destructive/40 text-destructive hover:bg-destructive/10')} data-testid="button-delete-all">
+                <div className="max-w-sm"><p className="font-medium text-danger-ink">{t('deleteAllTitle')}</p><p className="text-sm text-muted-foreground">{t('deleteAllBody')}</p></div>
+                <button onClick={() => { setTyped(''); setOpen(true); }} className={cn(btnGhost, 'border-destructive/40 text-danger-ink hover:bg-destructive/10')} data-testid="button-delete-all">
                   <Trash2 className="h-4 w-4" />{t('deleteAllBtn')}
                 </button>
               </div>
@@ -138,7 +139,7 @@ export default function SettingsPage() {
       <AlertDialog open={open} onOpenChange={(o) => { if (!del.isPending) setOpen(o); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-destructive" />{t('deleteAllConfirmTitle')}</AlertDialogTitle>
+            <AlertDialogTitle className="flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-danger-ink" />{t('deleteAllConfirmTitle')}</AlertDialogTitle>
             <AlertDialogDescription>{t('deleteAllConfirmBody')}</AlertDialogDescription>
           </AlertDialogHeader>
           <label className="block text-sm font-medium" htmlFor="confirm-delete">{t('typeDelete')}</label>
@@ -146,7 +147,7 @@ export default function SettingsPage() {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={del.isPending} data-testid="button-cancel-delete-all">{t('cancel')}</AlertDialogCancel>
             <button onClick={doDelete} disabled={typed !== 'DELETE' || del.isPending} data-testid="button-confirm-delete-all"
-              className={cn(btnPrimary, 'bg-destructive text-destructive-foreground shadow-none')}>
+              className={btnDanger}>
               {del.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}{del.isPending ? t('deleting') : t('deleteAllBtn')}
             </button>
           </AlertDialogFooter>
@@ -216,7 +217,7 @@ function AccountSection() {
               {savingName && <Loader2 className="h-4 w-4 animate-spin" />}{t('saveName')}
             </button>
           </div>
-          {nameErr && <p role="alert" className="mt-1.5 text-xs font-medium text-destructive">{nameErr}</p>}
+          {nameErr && <p role="alert" className="mt-1.5 text-xs font-medium text-danger-ink">{nameErr}</p>}
         </div>
         <div className="flex flex-wrap gap-2 border-t border-border pt-4">
           <button onClick={() => setPwOpen(true)} className={btnGhost} data-testid="button-change-password"><KeyRound className="h-4 w-4" />{t('changePassword')}</button>
@@ -228,7 +229,7 @@ function AccountSection() {
       <AlertDialog open={pwOpen} onOpenChange={(o) => { if (!pwBusy && !o) closePw(); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2"><KeyRound className="h-5 w-5 text-primary" />{t('changePassword')}</AlertDialogTitle>
+            <AlertDialogTitle className="flex items-center gap-2"><KeyRound className="h-5 w-5 text-gold" />{t('changePassword')}</AlertDialogTitle>
             <AlertDialogDescription>{t('changePasswordBody')}</AlertDialogDescription>
           </AlertDialogHeader>
           <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); void savePw(); }}>
@@ -237,7 +238,7 @@ function AccountSection() {
             <label className="block text-sm font-medium" htmlFor="pw-new">{t('fNewPassword')}</label>
             <input id="pw-new" type="password" dir="ltr" autoComplete="new-password" value={nw} onChange={(e) => setNw(e.target.value)} className={fieldCls} data-testid="input-new-password" />
             <p className="text-xs text-muted-foreground">{t('passwordHint')}</p>
-            {pwErr && <p role="alert" className="text-sm font-medium text-destructive" data-testid="error-password">{pwErr}</p>}
+            {pwErr && <p role="alert" className="text-sm font-medium text-danger-ink" data-testid="error-password">{pwErr}</p>}
             <AlertDialogFooter>
               <AlertDialogCancel type="button" disabled={pwBusy} data-testid="button-cancel-password">{t('cancel')}</AlertDialogCancel>
               <button type="submit" disabled={pwBusy} className={btnPrimary} data-testid="button-confirm-password">
@@ -281,23 +282,23 @@ function DangerAccount() {
   return (
     <Surface className="rise mt-4 border-destructive/30 p-5 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="max-w-sm"><p className="font-display text-lg font-semibold text-destructive">{t('deleteAccountTitle')}</p><p className="text-sm text-muted-foreground">{t('deleteAccountBody')}</p></div>
-        <button onClick={() => setOpen(true)} className={cn(btnPrimary, 'bg-destructive text-destructive-foreground shadow-none')} data-testid="button-delete-account"><Trash2 className="h-4 w-4" />{t('deleteAccountBtn')}</button>
+        <div className="max-w-sm"><p className="font-display text-lg font-semibold text-danger-ink">{t('deleteAccountTitle')}</p><p className="text-sm text-muted-foreground">{t('deleteAccountBody')}</p></div>
+        <button onClick={() => setOpen(true)} className={btnDanger} data-testid="button-delete-account"><Trash2 className="h-4 w-4" />{t('deleteAccountBtn')}</button>
       </div>
       <AlertDialog open={open} onOpenChange={(o) => { if (!busy && !o) close(); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-destructive" />{t('deleteAccountConfirmTitle')}</AlertDialogTitle>
+            <AlertDialogTitle className="flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-danger-ink" />{t('deleteAccountConfirmTitle')}</AlertDialogTitle>
             <AlertDialogDescription>{t('deleteAccountConfirmBody')}</AlertDialogDescription>
           </AlertDialogHeader>
           <label className="block text-sm font-medium" htmlFor="acct-confirm">{t('typeDelete')}</label>
           <input id="acct-confirm" dir="ltr" autoComplete="off" value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="DELETE" className={fieldCls} data-testid="input-confirm-delete-account" />
           <label className="block text-sm font-medium" htmlFor="acct-pw">{t('enterPassword')}</label>
           <input id="acct-pw" type="password" dir="ltr" autoComplete="current-password" value={pw} onChange={(e) => setPw(e.target.value)} className={fieldCls} data-testid="input-delete-account-password" />
-          {err && <p role="alert" className="text-sm font-medium text-destructive" data-testid="error-delete-account">{err}</p>}
+          {err && <p role="alert" className="text-sm font-medium text-danger-ink" data-testid="error-delete-account">{err}</p>}
           <AlertDialogFooter>
             <AlertDialogCancel disabled={busy} data-testid="button-cancel-delete-account">{t('cancel')}</AlertDialogCancel>
-            <button onClick={doDelete} disabled={typed !== 'DELETE' || !pw || busy} className={cn(btnPrimary, 'bg-destructive text-destructive-foreground shadow-none')} data-testid="button-confirm-delete-account">
+            <button onClick={doDelete} disabled={typed !== 'DELETE' || !pw || busy} className={btnDanger} data-testid="button-confirm-delete-account">
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}{busy ? t('deleting') : t('deleteAccountBtn')}
             </button>
           </AlertDialogFooter>

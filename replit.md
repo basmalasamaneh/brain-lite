@@ -52,7 +52,7 @@ The development data was reset with explicit user approval during the email-auth
 
 ## User preferences
 
-Calm premium styling: warm off-white, indigo, lavender, generous spacing, rounded cards. Plus Jakarta Sans headings, Inter body, IBM Plex Sans Arabic for Arabic.
+Formal gold styling: warm ivory light mode, luxury black dark mode, gold accents, subtle eight-point-star ornaments, generous spacing, rounded cards. Cormorant Garamond/Amiri headings and Inter/IBM Plex Sans Arabic body fonts. Keep palette tokens centralized and honor reduced motion, AA text contrast, and RTL layouts.
 
 ## Gotchas
 

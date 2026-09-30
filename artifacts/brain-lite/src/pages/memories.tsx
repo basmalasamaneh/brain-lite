@@ -23,23 +23,23 @@ export default function MemoriesPage() {
   return (
     <>
       <SampleBanner />
-      <PageHeader title={t('memoriesTitle')} lead={t('memoriesLead')}
+      <PageHeader eyebrow={t('memoriesEyebrow')} title={t('memoriesTitle')} lead={t('memoriesLead')}
         action={<Link href="/capture" className={cn(btnPrimary, 'hidden md:inline-flex')} data-testid="link-new-memory"><Plus className="h-4 w-4" />{t('captureSomething')}</Link>} />
 
       <div className="rise sticky top-[61px] z-20 -mx-4 mb-6 space-y-3 bg-background/85 px-4 py-3 backdrop-blur md:top-0 md:mx-0 md:px-0" style={{ animationDelay: '60ms' }}>
         <div className="relative">
           <Search className="pointer-events-none absolute start-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('searchPlaceholder')} className={cn(fieldCls, 'bg-card ps-10 pe-10 py-3')} data-testid="input-search" />
-          {q && <button onClick={() => setQ('')} className="absolute end-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground hover:text-foreground" aria-label={t('clearFilters')} data-testid="button-clear-search"><X className="h-4 w-4" /></button>}
+          {q && <button onClick={() => setQ('')} className="absolute end-1.5 top-1/2 -translate-y-1/2 grid h-9 w-9 place-items-center rounded-lg text-muted-foreground hover:bg-gold-soft hover:text-foreground" aria-label={t('clearFilters')} data-testid="button-clear-search"><X className="h-4 w-4" /></button>}
         </div>
-        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-          <button onClick={() => setType('')} className={cn('shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium transition active:scale-95', !type ? 'bg-foreground text-background' : 'bg-card border border-border hover:border-primary/30')} data-testid="filter-all">{t('all')}</button>
+        <div className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+          <button onClick={() => setType('')} className={cn('min-h-11 shrink-0 rounded-full px-4 text-sm font-medium transition active:scale-95', !type ? 'gold-gradient text-gold-ink soft-shadow' : 'bg-card border border-border hover:border-gold-400/60')} data-testid="filter-all">{t('all')}</button>
           {MEMORY_TYPES.map((ty) => {
             const Icon = typeMeta[ty].icon;
             return (
               <button key={ty} onClick={() => setType(type === ty ? '' : ty)} data-testid={`filter-${ty}`}
-                className={cn('inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium transition active:scale-95', type === ty ? 'bg-primary text-primary-foreground' : 'bg-card border border-border hover:border-primary/30')}>
-                <Icon className="h-3.5 w-3.5" />{t(`type_${ty}` as TKey)}
+                className={cn('inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-4 text-sm font-medium transition active:scale-95', type === ty ? 'gold-gradient text-gold-ink soft-shadow' : 'bg-card border border-border hover:border-gold-400/60')}>
+                <Icon className="h-3.5 w-3.5" strokeWidth={1.5} />{t(`type_${ty}` as TKey)}
               </button>
             );
           })}

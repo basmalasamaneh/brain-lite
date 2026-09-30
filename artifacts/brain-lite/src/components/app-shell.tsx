@@ -1,17 +1,20 @@
 import { useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'wouter';
-import { Brain, Home, Languages, Library, Loader2, LogOut, MessageCircleQuestion, Monitor, Moon, Plus, Settings, Sun } from 'lucide-react';
+import { motion, useReducedMotion } from 'framer-motion';
+import { Home, Languages, Library, Loader2, LogOut, MessageCircleQuestion, Monitor, Moon, Plus, Settings, Sun } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useI18n, type TKey } from '@/lib/i18n';
 import { useTheme, type ThemeChoice } from '@/lib/theme';
 import { usePreferences } from '@/lib/auth-helpers';
 import { useToast } from '@/hooks/use-toast';
+import { Wordmark } from '@/components/brand';
+import { PageTransition } from '@/components/motion';
 import { cn } from '@/lib/utils';
 
 const nav: { href: string; key: TKey; icon: typeof Home }[] = [
   { href: '/', key: 'navHome', icon: Home },
-  { href: '/capture', key: 'navCapture', icon: Plus },
   { href: '/memories', key: 'navMemories', icon: Library },
+  { href: '/capture', key: 'navCapture', icon: Plus },
   { href: '/ask', key: 'navAsk', icon: MessageCircleQuestion },
   { href: '/settings', key: 'navSettings', icon: Settings },
 ];
@@ -20,33 +23,55 @@ function isActive(loc: string, href: string) {
   return href === '/' ? loc === '/' : loc.startsWith(href);
 }
 
+const themeOpts: { v: ThemeChoice; icon: typeof Sun; k: TKey }[] = [
+  { v: 'light', icon: Sun, k: 'themeLight' }, { v: 'dark', icon: Moon, k: 'themeDark' }, { v: 'system', icon: Monitor, k: 'themeSystem' },
+];
+
 function ThemeSwitch() {
+  const reduce = useReducedMotion();
   const { theme } = useTheme();
   const { setTheme } = usePreferences();
   const { t } = useI18n();
-  const opts: { v: ThemeChoice; icon: typeof Sun; k: TKey }[] = [
-    { v: 'light', icon: Sun, k: 'themeLight' }, { v: 'dark', icon: Moon, k: 'themeDark' }, { v: 'system', icon: Monitor, k: 'themeSystem' },
-  ];
   return (
-    <div className="flex rounded-xl bg-muted p-1" role="radiogroup" aria-label={t('theme')}>
-      {opts.map(({ v, icon: Icon, k }) => (
-        <button key={v} role="radio" aria-checked={theme === v} title={t(k)} onClick={() => setTheme(v)} data-testid={`button-theme-${v}`}
-          className={cn('flex flex-1 items-center justify-center rounded-lg py-1.5 transition', theme === v ? 'bg-card text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
-          <Icon className="h-4 w-4" /><span className="sr-only">{t(k)}</span>
+    <div className="flex rounded-xl border border-border bg-surface-alt p-1" role="radiogroup" aria-label={t('theme')}>
+      {themeOpts.map(({ v, icon: Icon, k }) => (
+        <button key={v} role="radio" aria-checked={theme === v} aria-label={t(k)} title={t(k)} onClick={() => setTheme(v)} data-testid={`button-theme-${v}`}
+          className={cn('relative flex h-10 flex-1 items-center justify-center rounded-lg transition', theme === v ? 'text-gold' : 'text-muted-foreground hover:text-foreground')}>
+          {theme === v && <motion.span layoutId="theme-pill" className="absolute inset-0 rounded-lg bg-card soft-shadow ring-1 ring-gold-400/40" transition={reduce ? { duration: 0 } : { type: 'spring', stiffness: 420, damping: 34 }} />}
+          <Icon className="relative h-4 w-4" strokeWidth={1.75} />
         </button>
       ))}
     </div>
   );
 }
 
-function LangSwitch({ compact }: { compact?: boolean }) {
+/** Compact theme button for the mobile header: cycles light → dark → system. */
+export function ThemeCycle() {
+  const reduce = useReducedMotion();
+  const { theme } = useTheme();
+  const { setTheme } = usePreferences();
+  const { t } = useI18n();
+  const i = themeOpts.findIndex((o) => o.v === theme);
+  const cur = themeOpts[i < 0 ? 2 : i];
+  const next = themeOpts[((i < 0 ? 2 : i) + 1) % 3];
+  const Icon = cur.icon;
+  return (
+    <button onClick={() => setTheme(next.v)} aria-label={`${t('switchTheme')}: ${t(cur.k)}`} title={t(cur.k)} data-testid="button-theme-cycle"
+      className="grid h-11 w-11 place-items-center rounded-xl text-foreground/80 transition hover:bg-gold-soft hover:text-gold active:scale-95">
+      <motion.span key={cur.v} initial={reduce ? false : { rotate: -60, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} transition={{ duration: reduce ? 0 : 0.25 }}><Icon className="h-[18px] w-[18px]" strokeWidth={1.75} /></motion.span>
+    </button>
+  );
+}
+
+export function LangSwitch({ compact }: { compact?: boolean }) {
   const { lang, t } = useI18n();
   const { setLanguage: setLang } = usePreferences();
   return (
     <button onClick={() => setLang(lang === 'en' ? 'ar' : 'en')} aria-label={t('language')} data-testid="button-language"
-      className={cn('flex items-center gap-2 rounded-xl text-sm font-medium transition hover:bg-lavender hover:text-primary', compact ? 'h-9 px-2.5' : 'w-full px-3 py-2')}>
-      <Languages className="h-4 w-4" />
-      <span>{lang === 'en' ? 'العربية' : 'English'}</span>
+      className={cn('flex min-h-11 items-center gap-2 rounded-xl text-sm font-medium transition hover:bg-gold-soft hover:text-gold active:scale-95',
+        compact ? 'px-3' : 'w-full border border-border px-3')}>
+      <Languages className="h-4 w-4" strokeWidth={1.75} />
+      <span dir="ltr"><span className={lang === 'en' ? 'font-bold text-gold underline underline-offset-4' : 'text-muted-foreground'}>EN</span><span aria-hidden="true"> / </span><span className={lang === 'ar' ? 'font-bold text-gold underline underline-offset-4' : 'text-muted-foreground'}>AR</span></span>
     </button>
   );
 }
@@ -65,14 +90,14 @@ function AuthBlock() {
     catch { toast({ variant: 'destructive', title: t('logoutFail') }); setBusy(false); }
   };
   return (
-    <div className="flex items-center gap-3 rounded-xl p-2">
-      <span className="grid h-9 w-9 place-items-center rounded-full bg-lavender text-sm font-semibold text-primary" aria-hidden>{name.charAt(0).toUpperCase()}</span>
+    <div className="flex min-w-0 items-center gap-3 rounded-xl p-1">
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full gold-gradient font-display text-lg font-semibold text-gold-ink" aria-hidden>{name.charAt(0).toUpperCase()}</span>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-medium" data-testid="text-username">{name}</span>
         <span className="block truncate text-xs text-muted-foreground" dir="ltr" data-testid="text-user-email">{user.email}</span>
       </span>
-      <button onClick={doLogout} disabled={busy} title={t('logout')} className="rounded-lg p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-50" data-testid="button-logout">
-        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4 rtl:-scale-x-100" />}<span className="sr-only">{t('logout')}</span>
+      <button onClick={doLogout} disabled={busy} title={t('logout')} aria-label={t('logout')} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-muted-foreground transition hover:bg-gold-soft hover:text-foreground disabled:opacity-50" data-testid="button-logout">
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4 rtl:-scale-x-100" strokeWidth={1.75} />}
       </button>
     </div>
   );
@@ -80,75 +105,75 @@ function AuthBlock() {
 
 function Logo() {
   const { t } = useI18n();
-  return (
-    <Link href="/" className="flex items-center gap-2.5" data-testid="link-logo">
-      <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary text-primary-foreground"><Brain className="h-5 w-5" /></span>
-      <span className="font-display text-lg font-bold">{t('appName')}</span>
-    </Link>
-  );
+  return <Link href="/" className="rounded-xl" data-testid="link-logo" aria-label={t('appName')}><Wordmark name={t('appName')} /></Link>;
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [loc] = useLocation();
   const { t } = useI18n();
-  const mobileTabs = [nav[0], nav[1], nav[3], nav[2]];
+  const reduce = useReducedMotion();
 
   return (
     <div className="min-h-[100dvh]">
-      <aside className="fixed inset-y-0 start-0 z-30 hidden w-64 flex-col border-e border-sidebar-border bg-sidebar/80 p-5 backdrop-blur md:flex">
-        <Logo />
-        <p className="mt-2 text-xs text-muted-foreground">{t('tagline')}</p>
-        <nav className="mt-8 flex flex-col gap-1">
+      <aside className="fixed inset-y-0 start-0 z-30 hidden w-72 flex-col border-e border-sidebar-border bg-sidebar/90 p-6 backdrop-blur md:flex">
+        <div className="pattern-star pointer-events-none absolute inset-x-0 top-0 h-48 [mask-image:linear-gradient(to_bottom,black,transparent)]" aria-hidden />
+        <div className="relative"><Logo /></div>
+        <p className="relative mt-3 text-xs text-muted-foreground">{t('tagline')}</p>
+        <nav className="relative mt-10 flex flex-col gap-1" aria-label={t('mainNav')}>
           {nav.map(({ href, key, icon: Icon }) => {
             const active = isActive(loc, href);
             return (
-              <Link key={href} href={href} data-testid={`link-nav-${key}`}
-                className={cn('group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition',
-                  active ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}>
-                {active && <span className="absolute inset-y-2 start-0 w-1 rounded-full bg-primary" />}
-                <Icon className="h-[18px] w-[18px] transition group-hover:scale-110" />
-                {t(key)}
+              <Link key={href} href={href} data-testid={`link-nav-${key}`} aria-current={active ? 'page' : undefined}
+                className={cn('group relative flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium transition',
+                  active ? 'text-sidebar-accent-foreground' : 'text-muted-foreground hover:bg-gold-soft/60 hover:text-foreground')}>
+                {active && <motion.span layoutId="side-active" className="absolute inset-0 rounded-xl bg-sidebar-accent ring-1 ring-inset ring-gold-400/30" transition={{ type: 'spring', stiffness: 380, damping: 34 }} />}
+                {active && <motion.span layoutId="side-bar" className="absolute inset-y-2.5 start-0 w-[3px] rounded-full gold-gradient" />}
+                <Icon className="relative h-[18px] w-[18px] transition group-hover:scale-110" strokeWidth={1.5} />
+                <span className="relative">{t(key)}</span>
               </Link>
             );
           })}
         </nav>
-        <div className="mt-auto space-y-3">
+        <div className="relative mt-auto space-y-3">
           <ThemeSwitch />
           <LangSwitch />
           <div className="border-t border-sidebar-border pt-3"><AuthBlock /></div>
         </div>
       </aside>
 
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-background/80 px-4 py-3 backdrop-blur md:hidden">
+      <header className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-border bg-background/85 px-4 py-2 backdrop-blur md:hidden">
         <Logo />
-        <div className="flex items-center gap-1">
+        <div className="flex items-center">
           <LangSwitch compact />
-          <Link href="/settings" aria-label={t('navSettings')} data-testid="link-mobile-settings"
-            className={cn('grid h-9 w-9 place-items-center rounded-xl transition hover:bg-lavender hover:text-primary', isActive(loc, '/settings') && 'bg-lavender text-primary')}>
-            <Settings className="h-4 w-4" />
-          </Link>
+          <ThemeCycle />
         </div>
       </header>
 
-      <main className="md:ps-64">
-        <div className="mx-auto w-full max-w-5xl px-4 pb-32 pt-6 sm:px-8 md:pb-16 md:pt-12">{children}</div>
-        <div className="px-4 pb-28 md:hidden"><AuthBlock /></div>
+      <main id="main" className="md:ps-72">
+        <div className="mx-auto w-full min-w-0 max-w-5xl px-4 pb-36 pt-6 sm:px-8 md:pb-16 md:pt-12">
+          <PageTransition routeKey={loc}>{children}</PageTransition>
+        </div>
+        <div className="px-4 pb-32 md:hidden"><div className="rounded-2xl border border-border bg-card p-2"><AuthBlock /></div></div>
       </main>
 
-      <nav className="fixed inset-x-3 bottom-3 z-40 flex items-end justify-around rounded-2xl border border-border bg-card/90 px-2 pb-2 pt-2 soft-shadow backdrop-blur md:hidden">
-        {mobileTabs.map(({ href, key, icon: Icon }) => {
+      <nav aria-label={t('mainNav')} className="fixed inset-x-3 bottom-3 z-40 grid grid-cols-5 items-end rounded-2xl border border-gold-400/30 bg-card/95 px-1 pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-1.5 lux-shadow backdrop-blur md:hidden">
+        {nav.map(({ href, key, icon: Icon }) => {
           const active = isActive(loc, href);
           if (href === '/capture') return (
-            <Link key={href} href={href} aria-label={t(key)} data-testid="link-tab-capture" className="-mt-7 flex flex-col items-center gap-1">
-              <span className={cn('grid h-14 w-14 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-[0_10px_24px_-8px_hsl(var(--primary)/0.8)] transition active:scale-90', active && 'ring-4 ring-lavender')}>
-                <Plus className="h-7 w-7" />
-              </span>
-              <span className={cn('text-[11px] font-medium', active ? 'text-primary' : 'text-muted-foreground')}>{t(key)}</span>
+            <Link key={href} href={href} aria-label={t(key)} aria-current={active ? 'page' : undefined} data-testid="link-tab-capture" className="-mt-8 flex flex-col items-center gap-1 rounded-full">
+              <motion.span whileTap={reduce ? undefined : { scale: 0.9 }}
+                className={cn('btn-gold grid h-16 w-16 place-items-center rounded-full ring-4 ring-background', active && 'ring-gold-300/60')}>
+                <Plus className="h-7 w-7" strokeWidth={2} />
+              </motion.span>
+              <span className={cn('text-[11px] font-medium', active ? 'text-gold' : 'text-muted-foreground')}>{t(key)}</span>
             </Link>
           );
           return (
-            <Link key={href} href={href} data-testid={`link-tab-${key}`} className={cn('flex w-16 flex-col items-center gap-1 rounded-xl py-1 text-[11px] font-medium transition active:scale-90', active ? 'text-primary' : 'text-muted-foreground')}>
-              <Icon className="h-5 w-5" />{t(key)}
+            <Link key={href} href={href} data-testid={`link-tab-${key}`} aria-current={active ? 'page' : undefined}
+              className={cn('relative flex min-h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-medium transition active:scale-95', active ? 'text-gold' : 'text-muted-foreground')}>
+              {active && <motion.span layoutId="tab-indicator" className="absolute top-0 h-[3px] w-8 rounded-full gold-gradient" transition={{ type: 'spring', stiffness: 420, damping: 32 }} />}
+              <Icon className="h-5 w-5" strokeWidth={active ? 2 : 1.5} />
+              <span className="max-w-full truncate px-0.5">{t(key)}</span>
             </Link>
           );
         })}

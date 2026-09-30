@@ -5,13 +5,13 @@ import { Bell, CalendarClock, CheckSquare, FileText, Lightbulb, Receipt, StickyN
 export const MEMORY_TYPES = Object.values(MemoryType) as MemoryType[];
 
 export const typeMeta: Record<MemoryType, { icon: LucideIcon; tone: string }> = {
-  appointment: { icon: CalendarClock, tone: 'bg-lavender text-primary' },
-  receipt: { icon: Receipt, tone: 'bg-amber/15 text-amber' },
-  task: { icon: CheckSquare, tone: 'bg-green/15 text-green' },
-  idea: { icon: Lightbulb, tone: 'bg-amber/15 text-amber' },
-  document: { icon: FileText, tone: 'bg-lavender text-primary' },
-  note: { icon: StickyNote, tone: 'bg-muted text-foreground/70' },
-  other: { icon: Bell, tone: 'bg-muted text-muted-foreground' },
+  appointment: { icon: CalendarClock, tone: 'bg-gold-soft text-gold ring-1 ring-inset ring-gold-400/30' },
+  receipt: { icon: Receipt, tone: 'bg-success/10 text-success-ink ring-1 ring-inset ring-success/25' },
+  task: { icon: CheckSquare, tone: 'bg-warning/12 text-warning-ink ring-1 ring-inset ring-warning/25' },
+  idea: { icon: Lightbulb, tone: 'bg-gold-300/25 text-gold ring-1 ring-inset ring-gold-300/50' },
+  document: { icon: FileText, tone: 'bg-surface-alt text-foreground/80 ring-1 ring-inset ring-border' },
+  note: { icon: StickyNote, tone: 'bg-muted text-muted-foreground ring-1 ring-inset ring-border' },
+  other: { icon: Bell, tone: 'bg-danger/8 text-danger-ink ring-1 ring-inset ring-danger/20' },
 };
 
 export const ACCEPTED = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'application/pdf'] as const;

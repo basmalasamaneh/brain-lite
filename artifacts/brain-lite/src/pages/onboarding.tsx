@@ -1,17 +1,19 @@
 import { useState } from 'react';
 import { useLocation, useSearch } from 'wouter';
-import { ArrowRight, Brain, CalendarClock, Loader2, MessageCircleQuestion, Plus } from 'lucide-react';
+import { ArrowRight, CalendarClock, Loader2, MessageCircleQuestion, Plus } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useI18n, usePageTitle, type TKey } from '@/lib/i18n';
 import { nextParam } from '@/lib/auth-helpers';
 import { useToast } from '@/hooks/use-toast';
 import { btnPrimary } from '@/components/kit';
 import { cn } from '@/lib/utils';
+import { Medallion, OrnamentDivider, Wordmark } from '@/components/brand';
+import { LangSwitch, ThemeCycle } from '@/components/app-shell';
 
 const steps: { icon: typeof Plus; title: TKey; body: TKey; tone: string }[] = [
-  { icon: Plus, title: 'ob1Title', body: 'ob1Body', tone: 'bg-primary text-primary-foreground' },
-  { icon: MessageCircleQuestion, title: 'ob2Title', body: 'ob2Body', tone: 'bg-amber text-[#1C1B29]' },
-  { icon: CalendarClock, title: 'ob3Title', body: 'ob3Body', tone: 'bg-green text-[#0f1f1a]' },
+  { icon: Plus, title: 'ob1Title', body: 'ob1Body', tone: 'text-gold' },
+  { icon: MessageCircleQuestion, title: 'ob2Title', body: 'ob2Body', tone: 'text-gold' },
+  { icon: CalendarClock, title: 'ob3Title', body: 'ob3Body', tone: 'text-gold' },
 ];
 
 export default function OnboardingPage() {
@@ -39,28 +41,25 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="flex min-h-[100dvh] flex-col px-5 py-5 sm:px-10">
-      <div className="flex items-center justify-between">
-        <span className="flex items-center gap-2"><span className="grid h-9 w-9 place-items-center rounded-xl bg-primary text-primary-foreground"><Brain className="h-5 w-5" /></span><span className="font-display font-bold">{t('appName')}</span></span>
-        <button onClick={finish} disabled={busy} className="rounded-xl px-3 py-2 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground" data-testid="button-onboarding-skip">{t('obSkip')}</button>
+    <div className="pattern-star flex min-h-[100dvh] flex-col px-5 py-5 sm:px-10">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Wordmark name={t('appName')} size="sm" />
+        <div className="flex items-center gap-1"><LangSwitch compact /><ThemeCycle /></div>
+        <button onClick={finish} disabled={busy} className="min-h-11 rounded-xl px-3 py-2 text-sm font-medium text-muted-foreground transition hover:bg-gold-soft hover:text-foreground" data-testid="button-onboarding-skip">{t('obSkip')}</button>
       </div>
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center py-10">
         <div key={i} className="rise">
-          <div className="relative mb-10 h-40">
-            <div className="breathe absolute start-6 top-4 h-32 w-32 rounded-full bg-primary/20 blur-2xl" />
-            <span className={cn('relative grid h-24 w-24 place-items-center rounded-[1.75rem] soft-shadow', s.tone)}><Icon className="h-10 w-10" /></span>
-            <span className="absolute start-28 top-20 h-3 w-3 rounded-full bg-amber" />
-            <span className="absolute start-36 top-8 h-2 w-2 rounded-full bg-primary/60" />
-          </div>
-          <p className="text-sm font-medium text-primary" aria-live="polite">{t('obStep').replace('{n}', String(i + 1))}</p>
-          <h1 className="mt-2 font-display text-4xl font-bold leading-tight" data-testid="text-onboarding-title">{t(s.title)}</h1>
-          <p className="mt-4 text-lg text-muted-foreground">{t(s.body)}</p>
+          <Medallion className={cn('mb-8 h-36 w-36', s.tone)}><Icon className="h-10 w-10" strokeWidth={1.5} /></Medallion>
+          <p className="eyebrow text-center text-gold" aria-live="polite">{t('obStep').replace('{n}', String(i + 1))}</p>
+          <h1 className="mt-2 text-center font-display text-4xl leading-tight sm:text-5xl" data-testid="text-onboarding-title">{t(s.title)}</h1>
+          <OrnamentDivider className="mx-auto my-5 max-w-[12rem]" />
+          <p className="text-center text-lg text-muted-foreground">{t(s.body)}</p>
         </div>
         <div className="mt-12 flex items-center justify-between gap-4">
           <div className="flex gap-2" role="tablist" aria-label={t('obStep').replace('{n}', String(i + 1))}>
             {steps.map((_, j) => (
               <button key={j} role="tab" aria-selected={i === j} aria-label={t('obStep').replace('{n}', String(j + 1))} onClick={() => setI(j)} data-testid={`button-onboarding-dot-${j}`}
-                className={cn('h-2 rounded-full transition-all', i === j ? 'w-8 bg-primary' : 'w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50')} />
+                className="group grid h-11 min-w-11 place-items-center"><span className={cn('block h-2 rounded-full transition-all', i === j ? 'w-8 gold-gradient' : 'w-2 bg-muted-foreground/30 group-hover:bg-gold-400/60')} /></button>
             ))}
           </div>
           {i < steps.length - 1

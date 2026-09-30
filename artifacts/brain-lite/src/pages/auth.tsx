@@ -3,13 +3,14 @@ import { Link, useLocation, useSearch } from 'wouter';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { AlertCircle, ArrowRight, Brain, Eye, EyeOff, Languages, Loader2, Monitor, Moon, ShieldCheck, Sun } from 'lucide-react';
+import { AlertCircle, ArrowRight, Eye, EyeOff, Languages, Loader2, Monitor, Moon, ShieldCheck, Sun } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useI18n, usePageTitle, type TKey } from '@/lib/i18n';
 import { useTheme, type ThemeChoice } from '@/lib/theme';
 import { authErrorKey, nextParam, withNext } from '@/lib/auth-helpers';
 import { btnPrimary, fieldCls } from '@/components/kit';
 import { cn } from '@/lib/utils';
+import { Wordmark } from '@/components/brand';
 
 const loginSchema = z.object({
   email: z.string().trim().email('vEmail'),
@@ -25,7 +26,7 @@ function Field({ id, label, error, hint, children }: { id: string; label: string
     <div>
       <label htmlFor={id} className="mb-1.5 block text-sm font-medium">{label}</label>
       {children}
-      {error ? <p id={`${id}-err`} role="alert" className="mt-1.5 text-xs font-medium text-destructive" data-testid={`error-${id}`}>{error}</p>
+      {error ? <p id={`${id}-err`} role="alert" className="mt-1.5 text-xs font-medium text-danger-ink" data-testid={`error-${id}`}>{error}</p>
         : hint ? <p className="mt-1.5 text-xs text-muted-foreground">{hint}</p> : null}
     </div>
   );
@@ -38,10 +39,10 @@ function Toggles() {
   const Icon = theme === 'light' ? Sun : theme === 'dark' ? Moon : Monitor;
   return (
     <div className="flex items-center gap-1">
-      <button onClick={() => setLang(lang === 'en' ? 'ar' : 'en')} aria-label={t('language')} className="flex h-9 items-center gap-2 rounded-xl px-3 text-sm font-medium transition hover:bg-lavender hover:text-primary" data-testid="button-auth-language">
-        <Languages className="h-4 w-4" />{lang === 'en' ? 'العربية' : 'English'}
+      <button onClick={() => setLang(lang === 'en' ? 'ar' : 'en')} aria-label={t('language')} className="flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium transition hover:bg-gold-soft hover:text-gold" data-testid="button-auth-language">
+        <Languages className="h-4 w-4" /><span dir="ltr"><span className={lang === 'en' ? 'font-bold text-gold underline underline-offset-4' : 'text-muted-foreground'}>EN</span><span aria-hidden="true"> / </span><span className={lang === 'ar' ? 'font-bold text-gold underline underline-offset-4' : 'text-muted-foreground'}>AR</span></span>
       </button>
-      <button onClick={() => setTheme(order[(order.indexOf(theme) + 1) % 3])} aria-label={t('theme')} className="grid h-9 w-9 place-items-center rounded-xl transition hover:bg-lavender hover:text-primary" data-testid="button-auth-theme">
+      <button onClick={() => setTheme(order[(order.indexOf(theme) + 1) % 3])} aria-label={t('theme')} className="grid h-11 w-11 place-items-center rounded-xl transition hover:bg-gold-soft hover:text-gold" data-testid="button-auth-theme">
         <Icon className="h-4 w-4" />
       </button>
     </div>
@@ -83,24 +84,20 @@ export default function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
 
   return (
     <div className="grid min-h-[100dvh] lg:grid-cols-[1.05fr_1fr]">
-      <aside className="relative hidden overflow-hidden bg-[hsl(245_40%_14%)] p-12 text-[hsl(40_30%_94%)] lg:flex lg:flex-col">
-        <div className="pointer-events-none absolute -end-40 top-1/3 h-[34rem] w-[34rem] rounded-full border border-white/10" />
-        <div className="pointer-events-none absolute -end-24 top-[40%] h-[24rem] w-[24rem] rounded-full border border-white/10" />
-        <div className="breathe pointer-events-none absolute -end-10 top-[46%] h-60 w-60 rounded-full bg-primary/50 blur-3xl" />
-        <div className="breathe pointer-events-none absolute start-10 bottom-10 h-40 w-40 rounded-full bg-amber/25 blur-3xl" style={{ animationDelay: '2s' }} />
-        <div className="relative flex items-center gap-2.5">
-          <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary text-primary-foreground"><Brain className="h-5 w-5" /></span>
-          <span className="font-display text-lg font-bold">{t('appName')}</span>
-        </div>
-        <h1 className="rise relative mt-auto max-w-lg font-display text-5xl font-bold leading-[1.08] xl:text-6xl" data-testid="text-auth-tagline">{t('authTagline')}</h1>
-        <p className="rise relative mt-8 flex items-center gap-2 text-sm text-white/70" style={{ animationDelay: '120ms' }} data-testid="text-auth-privacy">
-          <ShieldCheck className="h-4 w-4 text-amber" />{t('authPrivacy')}
+      <aside className="pattern-star relative hidden overflow-hidden bg-[hsl(40_13%_5%)] p-12 text-[hsl(44_51%_91%)] lg:flex lg:flex-col">
+        <div className="pointer-events-none absolute -end-40 top-1/3 h-[34rem] w-[34rem] rotate-45 rounded-[5rem] border border-gold-400/20" aria-hidden />
+        <div className="pointer-events-none absolute -end-24 top-[40%] h-[24rem] w-[24rem] rotate-45 rounded-[3.5rem] border border-gold-400/25" aria-hidden />
+        <div className="breathe pointer-events-none absolute -end-10 top-[46%] h-60 w-60 rounded-full bg-gold-500/25 blur-3xl" aria-hidden />
+        <div className="relative"><Wordmark name={t('appName')} size="lg" /></div>
+        <h1 className="rise relative mt-auto max-w-lg font-display text-5xl leading-[1.08] xl:text-6xl" data-testid="text-auth-tagline">{t('authTagline')}</h1>
+        <p className="rise relative mt-8 flex items-center gap-2 text-sm text-[hsl(44_15%_67%)]" style={{ animationDelay: '120ms' }} data-testid="text-auth-privacy">
+          <ShieldCheck className="h-4 w-4 text-gold-400" strokeWidth={1.5} />{t('authPrivacy')}
         </p>
       </aside>
 
       <main className="flex flex-col px-5 py-5 sm:px-10">
         <div className="flex items-center justify-between">
-          <span className="flex items-center gap-2 lg:invisible"><span className="grid h-9 w-9 place-items-center rounded-xl bg-primary text-primary-foreground"><Brain className="h-5 w-5" /></span><span className="font-display font-bold">{t('appName')}</span></span>
+          <span className="lg:invisible"><Wordmark name={t('appName')} size="sm" /></span>
           <Toggles />
         </div>
         <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center py-10">
@@ -110,7 +107,7 @@ export default function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
 
           <form onSubmit={onSubmit} noValidate className="rise mt-8 space-y-4" style={{ animationDelay: '80ms' }}>
             {formError && (
-              <div role="alert" className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive" data-testid="error-auth">
+              <div role="alert" className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-danger-ink" data-testid="error-auth">
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />{t(formError)}
               </div>
             )}
@@ -125,7 +122,7 @@ export default function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
             <Field id="password" label={t('fPassword')} error={err(errors.password?.message)} hint={isSignup ? t('passwordHint') : undefined}>
               <div className="relative">
                 <input id="password" type={show ? 'text' : 'password'} dir="ltr" autoComplete={isSignup ? 'new-password' : 'current-password'} aria-invalid={!!errors.password} aria-describedby={errors.password ? 'password-err' : undefined} {...register('password')} className={cn(fieldCls, 'pe-11 rtl:text-right')} data-testid="input-password" />
-                <button type="button" onClick={() => setShow((s) => !s)} aria-label={show ? t('hidePassword') : t('showPassword')} aria-pressed={show} className="absolute end-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-lg text-muted-foreground hover:text-foreground" data-testid="button-toggle-password">
+                <button type="button" onClick={() => setShow((s) => !s)} aria-label={show ? t('hidePassword') : t('showPassword')} aria-pressed={show} className="absolute end-1 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-lg text-muted-foreground hover:text-foreground" data-testid="button-toggle-password">
                   {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
@@ -139,11 +136,11 @@ export default function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
             {isSignup ? t('haveAccount') : t('noAccount')}{' '}
-            <Link href={withNext(isSignup ? '/login' : '/signup', next)} className="font-semibold text-primary hover:underline" data-testid={isSignup ? 'link-to-login' : 'link-to-signup'}>
+            <Link href={withNext(isSignup ? '/login' : '/signup', next)} className="font-semibold text-gold hover:underline" data-testid={isSignup ? 'link-to-login' : 'link-to-signup'}>
               {isSignup ? t('logInInstead') : t('createOne')}
             </Link>
           </p>
-          <p className="mt-10 flex items-center justify-center gap-2 text-xs text-muted-foreground lg:hidden"><ShieldCheck className="h-3.5 w-3.5 text-primary" />{t('authPrivacy')}</p>
+          <p className="mt-10 flex items-center justify-center gap-2 text-xs text-muted-foreground lg:hidden"><ShieldCheck className="h-3.5 w-3.5 text-gold" />{t('authPrivacy')}</p>
         </div>
       </main>
     </div>

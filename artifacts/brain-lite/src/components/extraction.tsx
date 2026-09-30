@@ -3,21 +3,23 @@ import { AlertTriangle, CalendarPlus, Check, History, Loader2, Pencil, Sparkles 
 import type { Memory } from '@workspace/api-client-react';
 import { useI18n, type TKey } from '@/lib/i18n';
 import { calendarUrl } from '@/lib/memory';
-import { Surface, btnGhost, btnPrimary } from '@/components/kit';
+import { InfoTip, Skeleton, Surface, btnGhost, btnPrimary } from '@/components/kit';
+import { CornerFlourishes } from '@/components/brand';
+import { MeterFill, PulseStar } from '@/components/motion';
 import { cn } from '@/lib/utils';
 
 export function ConfidenceMeter({ value }: { value: number }) {
   const { t } = useI18n();
   const v = Math.max(0, Math.min(100, Math.round(value)));
-  const tone = v >= 80 ? 'bg-green' : v >= 50 ? 'bg-amber' : 'bg-destructive';
+  const tone = v >= 80 ? 'bg-success' : v >= 50 ? 'gold-gradient' : 'bg-destructive';
   return (
     <div data-testid="meter-confidence">
       <div className="mb-1.5 flex items-baseline justify-between text-xs">
-        <span className="text-muted-foreground">{t('confidence')}</span>
-        <span className="font-display text-sm font-bold tabular-nums" data-testid="text-confidence">{v}</span>
+        <span className="flex items-center gap-1 text-muted-foreground">{t('confidence')}<InfoTip text={t('tipConfidence')} className="h-6 w-6" /></span>
+        <span className="font-display text-xl font-semibold text-gold tabular-nums" data-testid="text-confidence">{v}<span className="text-xs text-muted-foreground">/100</span></span>
       </div>
-      <div className="h-2 overflow-hidden rounded-full bg-muted" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={v}>
-        <div className={cn('h-full origin-left rounded-full transition-transform duration-700 rtl:origin-right', tone)} style={{ transform: `scaleX(${v / 100})` }} />
+      <div className="h-2 overflow-hidden rounded-full bg-surface-alt ring-1 ring-inset ring-border" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={v}>
+        <MeterFill value={v} className={tone} />
       </div>
     </div>
   );
@@ -26,21 +28,20 @@ export function ConfidenceMeter({ value }: { value: number }) {
 export function UnderstandingSkeleton() {
   const { t } = useI18n();
   return (
-    <Surface className="rise relative overflow-hidden p-6 sm:p-8" role="status" aria-live="polite" data-testid="status-understanding">
-      <div className="breathe pointer-events-none absolute -end-10 -top-10 h-40 w-40 rounded-full bg-primary/10 blur-2xl" />
+    <Surface className="rise pattern-star relative overflow-hidden p-6 sm:p-8" role="status" aria-live="polite" data-testid="status-understanding">
       <div className="relative flex items-center gap-3">
-        <span className="grid h-10 w-10 place-items-center rounded-xl bg-lavender text-primary"><Sparkles className="h-5 w-5 animate-pulse" /></span>
+        <PulseStar />
         <div>
-          <p className="font-display text-lg font-semibold">{t('understanding')}</p>
+          <p className="font-display text-2xl">{t('understanding')}</p>
           <p className="text-sm text-muted-foreground">{t('understandingBody')}</p>
         </div>
       </div>
       <div className="relative mt-6 space-y-3">
-        <div className="h-6 w-28 animate-pulse rounded-full bg-muted" />
-        <div className="h-4 w-full animate-pulse rounded bg-muted [animation-delay:150ms]" />
-        <div className="h-4 w-4/5 animate-pulse rounded bg-muted [animation-delay:300ms]" />
+        <Skeleton className="h-6 w-28 rounded-full" />
+        <Skeleton className="h-4 w-full rounded-md" />
+        <Skeleton className="h-4 w-4/5 rounded-md" />
         <div className="grid grid-cols-3 gap-3 pt-2">
-          {[0, 1, 2].map((i) => <div key={i} className="h-12 animate-pulse rounded-xl bg-muted" style={{ animationDelay: `${i * 120}ms` }} />)}
+          {[0, 1, 2].map((i) => <Skeleton key={i} className="h-12" />)}
         </div>
       </div>
     </Surface>
@@ -82,13 +83,13 @@ export function ExtractionBanner({ m, canEdit, onConfirm, onChange, confirming }
     <div className="rise flex items-start gap-2.5 rounded-xl border border-border bg-muted/50 px-4 py-3 text-sm text-muted-foreground" data-testid="banner-legacy"><History className="mt-0.5 h-4 w-4 shrink-0" />{t('legacyNote')}</div>
   );
   if (es === 'processing') return (
-    <div className="rise flex items-center gap-2.5 rounded-xl border border-primary/20 bg-lavender px-4 py-3 text-sm text-primary" data-testid="banner-processing"><Loader2 className="h-4 w-4 animate-spin" />{t('processingNote')}</div>
+    <div className="rise flex items-center gap-2.5 rounded-xl border border-gold-500/20 bg-gold-soft px-4 py-3 text-sm text-gold" data-testid="banner-processing"><Loader2 className="h-4 w-4 animate-spin" />{t('processingNote')}</div>
   );
   if (es === 'fallback') {
     const reason = (m.extraction_error ? `reason_${m.extraction_error}` : 'reason_unknown') as TKey;
     return (
-      <div className="rise rounded-xl border border-amber/40 bg-amber/10 px-4 py-3.5 text-sm" role="status" data-testid="banner-fallback">
-        <p className="flex items-center gap-2 font-semibold text-amber"><AlertTriangle className="h-4 w-4" />{t('fallbackTitle')}</p>
+      <div className="rise rounded-xl border border-warning/40 bg-warning/10 px-4 py-3.5 text-sm" role="status" data-testid="banner-fallback">
+        <p className="flex items-center gap-2 font-semibold text-warning-ink"><AlertTriangle className="h-4 w-4" />{t('fallbackTitle')}</p>
         <p className="mt-1 font-medium" data-testid="text-fallback-reason">{t(reason)}</p>
         <p className="mt-0.5 text-muted-foreground">{t('fallbackSaved')}</p>
         <div className="mt-3 max-w-xs"><ConfidenceMeter value={m.confidence} /></div>
@@ -108,16 +109,17 @@ export function ExtractionBanner({ m, canEdit, onConfirm, onChange, confirming }
   }
   // extracted
   return (
-    <div className="rise rounded-2xl border border-border bg-card/70 p-4 sm:p-5" data-testid="banner-extracted">
-      <div className="grid gap-4 sm:grid-cols-[1fr_14rem] sm:items-center">
+    <div className="rise gold-frame relative rounded-2xl p-5 lux-shadow sm:p-6" data-testid="banner-extracted">
+      <CornerFlourishes />
+      <div className="relative grid gap-4 sm:grid-cols-[1fr_15rem] sm:items-center">
         <div>
-          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary"><Sparkles className="h-3.5 w-3.5" />{t('resultTitle')}</p>
+          <p className="eyebrow flex items-center gap-2 text-gold"><Sparkles className="h-3.5 w-3.5" strokeWidth={1.5} />{t('resultTitle')}</p>
           <p className="mt-1.5 text-sm" data-testid="text-extraction-state">{m.status === 'confirmed' ? (m.confidence >= 80 ? t('confirmedAuto') : t('confirmedManual')) : t('reviewPrompt')}</p>
         </div>
         <ConfidenceMeter value={m.confidence} />
       </div>
       {m.status === 'needs_review' && canEdit && (
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="relative mt-4 flex flex-wrap gap-2">
           <ConfirmChange onConfirm={onConfirm} onChange={onChange} confirming={confirming} />
         </div>
       )}
@@ -130,7 +132,7 @@ export function ConfirmChange({ onConfirm, onChange, confirming, id = '' }: { on
   const sfx = id !== '' ? `-${id}` : '';
   return (
     <>
-      <button type="button" onClick={onConfirm} disabled={confirming} className={cn(btnPrimary, 'bg-green px-4 py-2')} data-testid={`button-confirm${sfx}`}>
+      <button type="button" onClick={onConfirm} disabled={confirming} className={btnPrimary} data-testid={`button-confirm${sfx}`}>
         {confirming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}{t('confirm')}
       </button>
       <button type="button" onClick={onChange} disabled={confirming} className={cn(btnGhost, 'px-4 py-2')} data-testid={`button-change${sfx}`}><Pencil className="h-4 w-4" />{t('change')}</button>

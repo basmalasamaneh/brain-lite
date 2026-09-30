@@ -8,7 +8,8 @@ import { MEMORY_TYPES, fileUrl, formatAmount, formatDate, formatDateTime, useInv
 import { CalendarLink, ExtractionBanner, ExtraSummary } from '@/components/extraction';
 import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { EmptyState, ErrorState, SampleBanner, StatusPill, Surface, TypeChip, btnGhost, btnPrimary, fieldCls } from '@/components/kit';
+import { EmptyState, ErrorState, SampleBanner, StatusPill, Surface, TypeChip, btnDanger, btnGhost, btnPrimary, fieldCls , Skeleton } from '@/components/kit';
+import { IconCircle, OrnamentDivider } from '@/components/brand';
 import { cn } from '@/lib/utils';
 
 type Draft = { title: string; raw_text: string; summary: string; type: MemoryType; status: MemoryStatus; date: string; time: string; amount: string; currency: string; people: string; tags: string; extra: string };
@@ -45,16 +46,16 @@ function Field({ label, children, hint, error }: { label: string; children: Reac
     <label className="block">
       <span className="mb-1.5 flex items-baseline gap-2 text-sm font-medium">{label}{hint && <span className="text-xs font-normal text-muted-foreground">{hint}</span>}</span>
       {children}
-      {error && <span className="mt-1 block text-xs text-destructive" role="alert">{error}</span>}
+      {error && <span className="mt-1 block text-xs text-danger-ink" role="alert">{error}</span>}
     </label>
   );
 }
 
 function Meta({ icon: Icon, label, children }: { icon: typeof Calendar; label: string; children: React.ReactNode }) {
   return (
-    <div className="flex gap-3 py-3">
-      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-      <div className="min-w-0"><div className="text-xs text-muted-foreground">{label}</div><div className="mt-0.5 text-sm font-medium">{children}</div></div>
+    <div className="flex items-center gap-3 py-3">
+      <IconCircle icon={Icon} size="sm" />
+      <div className="min-w-0"><div className="text-xs text-muted-foreground">{label}</div><div className="mt-0.5 break-words text-sm font-medium tabular-nums">{children}</div></div>
     </div>
   );
 }
@@ -134,7 +135,7 @@ export default function MemoryDetailPage() {
 
   if (!valid) return <>{back}<EmptyState title={t('notFound')} /></>;
   if (q.isLoading) return (
-    <>{back}<Surface className="space-y-4 p-8"><div className="h-6 w-24 animate-pulse rounded-full bg-muted" /><div className="h-9 w-2/3 animate-pulse rounded bg-muted" /><div className="h-4 w-full animate-pulse rounded bg-muted" /><div className="h-4 w-4/5 animate-pulse rounded bg-muted" /></Surface></>
+    <>{back}<Surface className="space-y-4 p-8" data-testid="status-memory-loading"><Skeleton className="h-7 w-28 rounded-full" /><Skeleton className="h-10 w-2/3" /><Skeleton className="h-4 w-full rounded-md" /><Skeleton className="h-4 w-4/5 rounded-md" /></Surface></>
   );
   if (q.isError || !m) {
     const status = (q.error as { status?: number } | null)?.status;
@@ -161,7 +162,7 @@ export default function MemoryDetailPage() {
               <div className="flex gap-2">
                 {(['needs_review', 'confirmed'] as MemoryStatus[]).map((s) => (
                   <button type="button" key={s} onClick={() => set('status', s)} data-testid={`button-status-${s}`}
-                    className={cn('flex-1 rounded-xl border px-3 py-2.5 text-sm font-medium transition active:scale-95', draft.status === s ? (s === 'confirmed' ? 'border-green bg-green/10 text-green' : 'border-amber bg-amber/10 text-amber') : 'border-input')}>
+                    className={cn('flex-1 rounded-xl border px-3 py-2.5 text-sm font-medium transition active:scale-95', draft.status === s ? (s === 'confirmed' ? 'border-success bg-success/10 text-success-ink' : 'border-warning bg-warning/10 text-warning-ink') : 'border-input')}>
                     {t(`status_${s}` as TKey)}
                   </button>
                 ))}
@@ -180,8 +181,8 @@ export default function MemoryDetailPage() {
             <div className="sm:col-span-2"><Field label={t('fExtra')} error={errors.extra && t(errors.extra)}><textarea value={draft.extra} onChange={(e) => set('extra', e.target.value)} rows={5} dir="ltr" spellCheck={false} placeholder='{"store": "…", "items": [], "warranty": "…"}' className={cn(fieldCls, 'font-mono text-xs')} data-testid="input-extra" /></Field></div>
             <div className="sm:col-span-2"><Field label={t('fRaw')}><textarea value={draft.raw_text} onChange={(e) => set('raw_text', e.target.value)} maxLength={100000} rows={8} className={cn(fieldCls, 'leading-relaxed')} data-testid="input-raw" /></Field></div>
           </Surface>
-          {saveError && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{t('errSave')}</p>}
-          <div className="flex justify-end gap-3">
+          {saveError && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-danger-ink">{t('errSave')}</p>}
+          <div className="sticky bottom-24 z-20 -mx-2 flex justify-end gap-3 rounded-2xl border border-border bg-background/90 p-2 backdrop-blur md:static md:mx-0 md:border-0 md:bg-transparent md:p-0">
             <button type="button" onClick={() => { setDraft(null); setErrors({}); setSaveError(false); }} disabled={update.isPending} className={btnGhost} data-testid="button-cancel-edit">{t('cancel')}</button>
             <button type="submit" disabled={update.isPending} className={btnPrimary} data-testid="button-save-edit">{update.isPending && <Loader2 className="h-4 w-4 animate-spin" />}{update.isPending ? t('saving') : t('saveChanges')}</button>
           </div>
@@ -193,16 +194,16 @@ export default function MemoryDetailPage() {
         <div className="grid gap-5 lg:grid-cols-[1fr_18rem]">
           <Surface className="rise p-6 sm:p-9">
             <div className="flex flex-wrap items-center gap-2"><TypeChip type={m.type} size="lg" /><StatusPill status={m.status} /></div>
-            <h1 className="font-display mt-5 text-2xl font-bold leading-tight sm:text-3xl" data-testid="text-memory-title">{m.title}</h1>
+            <h1 className="font-display mt-5 break-words text-3xl leading-tight sm:text-5xl" data-testid="text-memory-title">{m.title}</h1>
             <p className={cn('mt-4 text-lg leading-relaxed', !m.summary && 'text-muted-foreground italic text-base')} data-testid="text-summary">{m.summary || t('noSummary')}</p>
-            <div className="my-6 h-px bg-border" />
-            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t('fRaw')}</h2>
+            <OrnamentDivider className="my-7" />
+            <h2 className="eyebrow mb-2 text-gold">{t('fRaw')}</h2>
             {m.extra && Object.keys(m.extra).length > 0 && <div className="mb-6 rounded-xl border border-border bg-background/60 p-4"><ExtraSummary extra={m.extra} /></div>}
             <p className="whitespace-pre-wrap leading-relaxed text-foreground/85" data-testid="text-raw">{m.raw_text || t('noText')}</p>
             {m.file_path && (
               <div className="mt-6 rounded-xl border border-border bg-background/60 p-3">
                 {isImage && <img src={fileUrl(m.file_path)} alt="" className="mb-3 max-h-80 w-full rounded-lg object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />}
-                <a href={fileUrl(m.file_path)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline" data-testid="link-file">
+                <a href={fileUrl(m.file_path)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm font-medium text-gold hover:underline" data-testid="link-file">
                   <Paperclip className="h-4 w-4" />{t('openFile')}<ExternalLink className="h-3.5 w-3.5" />
                 </a>
               </div>
@@ -210,25 +211,25 @@ export default function MemoryDetailPage() {
           </Surface>
 
           <div className="space-y-4">
-            <Surface className="rise divide-y divide-border px-5 py-2" style={{ animationDelay: '80ms' }}>
+            <Surface className="rise gold-frame divide-y divide-border px-5 py-2" style={{ animationDelay: '80ms' }}>
               <Meta icon={Calendar} label={t('fDate')}>{m.event_date ? formatDateTime(m.event_date, lang) : <span className="text-muted-foreground">{t('none')}</span>}</Meta>
               <Meta icon={Wallet} label={t('fAmount')}>{amount || <span className="text-muted-foreground">{t('none')}</span>}</Meta>
-              <Meta icon={Users} label={t('fPeople')}>{m.people.length ? <div className="flex flex-wrap gap-1.5">{m.people.map((p) => <span key={p} className="rounded-full bg-lavender px-2 py-0.5 text-xs text-primary">{p}</span>)}</div> : <span className="text-muted-foreground">{t('none')}</span>}</Meta>
+              <Meta icon={Users} label={t('fPeople')}>{m.people.length ? <div className="flex flex-wrap gap-1.5">{m.people.map((p) => <span key={p} className="rounded-full bg-gold-soft px-2 py-0.5 text-xs text-gold">{p}</span>)}</div> : <span className="text-muted-foreground">{t('none')}</span>}</Meta>
               <Meta icon={Tag} label={t('fTags')}>{m.tags.length ? <div className="flex flex-wrap gap-1.5">{m.tags.map((p) => <span key={p} className="rounded-md bg-muted px-2 py-0.5 text-xs">#{p}</span>)}</div> : <span className="text-muted-foreground">{t('none')}</span>}</Meta>
-              <div className="py-3 text-xs text-muted-foreground">{t('created')} {formatDate(m.created_at, lang)}</div>
+              <div className="py-3 text-xs text-muted-foreground tabular-nums">{t('created')} {formatDate(m.created_at, lang)}</div>
             </Surface>
 
             <CalendarLink m={m} />
             {isAuthenticated ? (
               <div className="rise space-y-2" style={{ animationDelay: '140ms' }}>
                 {m.status === 'needs_review' && (!m.extraction_status || m.extraction_status === 'legacy') && (
-                  <button onClick={() => send({ status: 'confirmed' })} disabled={update.isPending} className={cn(btnGhost, 'w-full border-green/40 text-green hover:bg-green/10')} data-testid="button-confirm">
+                  <button onClick={() => send({ status: 'confirmed' })} disabled={update.isPending} className={cn(btnGhost, 'w-full border-success/40 text-success-ink hover:bg-success/10')} data-testid="button-confirm">
                     {update.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}{t('markConfirmed')}
                   </button>
                 )}
                 <button onClick={() => { setDraft(toDraft(m)); setErrors({}); }} className={cn(btnPrimary, 'w-full')} data-testid="button-edit"><Pencil className="h-4 w-4" />{t('edit')}</button>
-                <button onClick={() => { setDeleteError(false); setConfirmOpen(true); }} className={cn(btnGhost, 'w-full text-destructive hover:border-destructive/40 hover:bg-destructive/10')} data-testid="button-delete"><Trash2 className="h-4 w-4" />{t('delete')}</button>
-                {saveError && <p role="alert" className="text-sm text-destructive">{t('errSave')}</p>}
+                <button onClick={() => { setDeleteError(false); setConfirmOpen(true); }} className={cn(btnGhost, 'w-full text-danger-ink hover:border-destructive/40 hover:bg-destructive/10')} data-testid="button-delete"><Trash2 className="h-4 w-4" />{t('delete')}</button>
+                {saveError && <p role="alert" className="text-sm text-danger-ink">{t('errSave')}</p>}
               </div>
             ) : (
               <div className="space-y-2">
@@ -247,10 +248,10 @@ export default function MemoryDetailPage() {
             <AlertDialogTitle className="font-display">{t('deleteTitle')}</AlertDialogTitle>
             <AlertDialogDescription>{t('deleteBody')}</AlertDialogDescription>
           </AlertDialogHeader>
-          {deleteError && <p role="alert" className="text-sm text-destructive">{t('errSave')}</p>}
+          {deleteError && <p role="alert" className="text-sm text-danger-ink">{t('errSave')}</p>}
           <AlertDialogFooter className="gap-2">
             <AlertDialogCancel disabled={del.isPending} className="rounded-xl" data-testid="button-cancel-delete">{t('cancel')}</AlertDialogCancel>
-            <button onClick={doDelete} disabled={del.isPending} className="inline-flex items-center justify-center gap-2 rounded-xl bg-destructive px-4 py-2 text-sm font-semibold text-destructive-foreground transition hover:brightness-110 disabled:opacity-50" data-testid="button-confirm-delete">
+            <button onClick={doDelete} disabled={del.isPending} className={btnDanger} data-testid="button-confirm-delete">
               {del.isPending && <Loader2 className="h-4 w-4 animate-spin" />}{del.isPending ? t('deleting') : t('delete')}
             </button>
           </AlertDialogFooter>
