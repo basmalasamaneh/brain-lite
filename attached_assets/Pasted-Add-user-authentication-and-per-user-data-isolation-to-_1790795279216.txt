@@ -1,0 +1,29 @@
+Add user authentication and per-user data isolation to Brain Lite. Every user must only ever see and modify their own data.
+
+AUTH:
+- Email + password signup and login. Hash passwords with bcrypt (cost 12). Validate email format and require passwords of at least 8 characters.
+- Use secure server-side sessions stored in PostgreSQL (connect-pg-simple) with an httpOnly, sameSite=lax cookie (secure in production). Read SESSION_SECRET from Replit Secrets.
+- Endpoints: POST /api/auth/signup, POST /api/auth/login, POST /api/auth/logout, GET /api/auth/me.
+- Add a "Continue with Google" option only if it can be done cleanly; otherwise skip it.
+
+DATABASE:
+- Create table `users` (id, email unique, password_hash, name, language, theme, created_at).
+- Add `user_id` (foreign key, NOT NULL, ON DELETE CASCADE) to `memories`. Migrate safely: assign existing seed data to no one and delete it; new users get 5 friendly sample memories on signup, clearly tagged as samples and removable with one tap.
+
+AUTHORIZATION (critical):
+- Create an auth middleware and apply it to EVERY /api route except signup and login.
+- Every query on memories must filter by the logged-in user's id. This applies to list, detail, edit, delete, AI capture, Ask Your Brain (only load that user's memories), Daily Brief, export, and delete-all.
+- Uploaded files: store under a per-user path, and serve them only through an authenticated route that checks ownership. No public file URLs.
+- Return 404 (not 403) when a memory belongs to someone else.
+
+SECURITY:
+- Rate limit login and signup (express-rate-limit, e.g. 10 attempts per 15 minutes) and the AI endpoints (e.g. 30 requests per hour per user).
+- Add helmet, input validation with zod, and a generic "Invalid email or password" message on failed login.
+
+UI:
+- Clean, minimal login and signup screens using the existing design system (light/dark, EN/AR, RTL). Show the tagline "Your life is messy. Your second brain doesn't have to be." and the privacy note "Private by default. Your data is only yours."
+- Protect all routes: redirect unauthenticated users to login, and return to the intended page after login.
+- Settings page: show the account email, name, language and theme saved to the user profile, logout, change password, and "Delete my account" (with a confirm dialog that permanently deletes the user and all their data and files).
+- Add a short first-run onboarding (3 screens max) explaining Capture, Ask, and the Daily Brief, with a Skip button.
+
+Test that two different accounts cannot see each other's memories, files, or Ask results.
