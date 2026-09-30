@@ -1,0 +1,25 @@
+Add Voice Capture to Brain Lite. This app is MOBILE-FIRST: design every interaction for one-handed phone use first, then adapt to desktop. Do not break any existing feature, and keep the gold design system, EN/AR RTL support, auth and per-user data isolation exactly as they are.
+
+RECORDING (frontend):
+- On the Capture screen add a prominent gold microphone button (min 64px) in the thumb zone, next to Write / Photo / File.
+- Tap to start, tap to stop (not hold). While recording show: a full-screen bottom sheet with an animated gold waveform, a live timer, and big Stop and Cancel buttons. Vibrate briefly on start/stop where supported.
+- Use the MediaRecorder API. Pick a supported mimeType automatically (webm/opus on Android and desktop, mp4 on iOS Safari). Max 2 minutes, auto-stop with a gentle warning at 1:45.
+- Handle microphone permission properly: a friendly explanation before the browser prompt, and a clear help message if denied ("Enable microphone in your browser settings"). Also handle no mic found and unsupported browsers.
+- After stopping, show a playback preview with Re-record and Use this buttons.
+
+PROCESSING (backend):
+- New endpoint POST /api/capture/voice (authenticated, same rate limits as other AI endpoints, max 5MB audio).
+- Send the audio to the Gemini API as inline audio data and ask for ONLY valid JSON with: { "transcript": "", "type": "appointment|receipt|task|idea|document|note|other", "title": "", "summary": "", "event_date": "ISO or null", "amount": number|null, "currency": "", "people": [], "tags": [], "confidence": 0-100 }.
+- If Gemini rejects the audio format, convert it server-side to WAV or MP3 with ffmpeg and retry once.
+- Support Arabic (including Palestinian/Levantine dialect) and English, and mixed speech. Keep the transcript in the language spoken. Never invent data; lower confidence when unsure. Resolve relative dates like "tomorrow" or "next Sunday" using the current date and the user's timezone (send the timezone from the client).
+- Save the transcript in the memory (add a `transcript` column via a safe migration) and reuse the existing result card, confidence meter, confirm/edit flow and "Add to calendar".
+- Handle 429 and other errors with a friendly message and offer to save the raw audio transcript as a plain note. Don't keep the audio file after processing unless the user chooses "Keep the recording" (off by default).
+
+UX:
+- Processing state: "Listening to your memory..." with a pulsing gold animation and steps (Recording → Understanding → Saved).
+- Result card shows the transcript in an expandable section so the user can verify and edit it.
+- A voice note with multiple items ("remind me to buy a gift and call the dentist") should be split into separate memories, shown as a short list the user can confirm all at once or individually.
+- Add a one-line privacy note under the mic: "Your voice is processed to create a memory and is not kept."
+- Everything must work at 390px width: no horizontal scroll, sheets respect the iOS safe area (env(safe-area-inset-bottom)), and buttons are reachable with one thumb.
+
+Test on mobile width: record in Arabic and English, deny permission, stop early, hit the 2-minute limit, and try with no network. Then list what you changed.
