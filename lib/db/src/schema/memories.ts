@@ -1,0 +1,25 @@
+import { pgTable, serial, text, integer, timestamp, doublePrecision } from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod/v4";
+
+export const memoriesTable = pgTable("memories", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id"),
+  type: text("type", { enum: ["appointment", "receipt", "task", "idea", "document", "note", "other"] }).notNull().default("note"),
+  title: text("title").notNull(),
+  summary: text("summary"),
+  raw_text: text("raw_text").notNull().default(""),
+  event_date: text("event_date"),
+  amount: doublePrecision("amount"),
+  currency: text("currency"),
+  people: text("people").array().notNull().default([]),
+  tags: text("tags").array().notNull().default([]),
+  confidence: integer("confidence").notNull().default(0),
+  status: text("status", { enum: ["confirmed", "needs_review"] }).notNull().default("needs_review"),
+  file_path: text("file_path"),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const insertMemorySchema = createInsertSchema(memoriesTable).omit({ id: true, created_at: true });
+export type InsertMemory = z.infer<typeof insertMemorySchema>;
+export type MemoryRow = typeof memoriesTable.$inferSelect;

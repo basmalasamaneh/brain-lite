@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Brain Lite"
+description = "A calm bilingual personal second brain for capturing text, photos and PDFs, with editable memories and light and dark themes."
+version = "1.0.0"
+id = "artifacts/brain-lite"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 19623
+
+[services.development]
+run = "pnpm --filter @workspace/brain-lite run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/brain-lite", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/brain-lite/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19623"
+BASE_PATH = "/"

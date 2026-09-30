@@ -1,10 +1,11 @@
-# [Project name]
+# Brain Lite
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A bilingual, mobile-first personal second brain for capturing text, photos, and PDFs. Phase 1 includes capture and manual memory management, not AI.
 
 ## Run & Operate
 
 - `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/brain-lite run dev` — frontend (use the managed workflow for its port/base-path environment)
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
@@ -22,19 +23,25 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/brain-lite` — React/Vite frontend and app-local design system.
+- `artifacts/api-server/src/routes` — memory, auth, and private attachment endpoints.
+- `lib/db/src/schema` — PostgreSQL schema.
+- `lib/api-spec/openapi.yaml` — source of truth for API contracts.
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- The user chose a mobile-first React/Vite web app after initially selecting mobile output; do not switch to Expo.
+- Phase 1 deliberately performs no AI extraction, classification, or question answering. New captures remain notes needing review until manually edited.
+- Personal captures require sign-in; anonymous visitors see read-only samples, not other users' content. This protects potentially sensitive documents without hiding the initial experience behind a login screen.
+- File bytes live in private App Storage; PostgreSQL holds paths and ownership metadata.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+Capture text, images, camera photos, and PDFs; browse and filter memories; edit metadata and delete memories. English/Arabic with RTL and system/light/dark themes.
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+Calm premium styling: warm off-white, indigo, lavender, generous spacing, rounded cards. Plus Jakarta Sans headings, Inter body, IBM Plex Sans Arabic for Arabic.
 
 ## Gotchas
 

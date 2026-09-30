@@ -11,6 +11,108 @@ tags:
   - name: health
     description: Health operations
 paths:
+  /memories:
+    get:
+      operationId: listMemories
+      parameters:
+        - {name: type, in: query, schema: {type: string}}
+        - {name: search, in: query, schema: {type: string}}
+      responses:
+        "200":
+          description: Memories
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: "#/components/schemas/Memory"}}
+    post:
+      operationId: createMemory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/MemoryInput"}
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Memory"}
+  /memories/stats:
+    get:
+      operationId: getMemoryStats
+      responses:
+        "200":
+          description: Summary
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/MemoryStats"}
+  /memories/{id}:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: integer}}
+    get:
+      operationId: getMemory
+      responses:
+        "200":
+          description: Memory
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Memory"}
+    patch:
+      operationId: updateMemory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/MemoryUpdate"}
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Memory"}
+    delete:
+      operationId: deleteMemory
+      responses:
+        "204": {description: Deleted}
+  /storage/uploads/request-url:
+    post:
+      operationId: requestUploadUrl
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/UploadUrlRequest"}
+      responses:
+        "200":
+          description: Upload URL
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/UploadUrlResponse"}
+  /auth/user:
+    get:
+      operationId: getCurrentAuthUser
+      responses:
+        "200":
+          description: Auth state
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user]
+                properties:
+                  user:
+                    oneOf:
+                      - {$ref: "#/components/schemas/AuthUser"}
+                      - {type: "null"}
+  /mobile-auth/token-exchange:
+    post:
+      operationId: exchangeMobileAuthorizationCode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/MobileAuthInput"}
+      responses:
+        "200": {description: Session}
   /healthz:
     get:
       operationId: healthCheck
@@ -26,6 +128,88 @@ paths:
                 $ref: "#/components/schemas/HealthStatus"
 components:
   schemas:
+    AuthUser:
+      type: object
+      required: [id, email, firstName, lastName, profileImageUrl]
+      properties:
+        id: {type: string}
+        email: {type: [string, "null"]}
+        firstName: {type: [string, "null"]}
+        lastName: {type: [string, "null"]}
+        profileImageUrl: {type: [string, "null"]}
+    MobileAuthInput:
+      type: object
+      required: [code, codeVerifier, redirectUri, nonce, state]
+      properties:
+        code: {type: string}
+        codeVerifier: {type: string}
+        redirectUri: {type: string}
+        nonce: {type: string}
+        state: {type: string}
+    UploadUrlRequest:
+      type: object
+      required: [name, size, contentType]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 255}
+        size: {type: integer, minimum: 1, maximum: 10485760}
+        contentType: {type: string, enum: [image/jpeg, image/png, image/webp, image/heic, application/pdf]}
+    UploadUrlResponse:
+      type: object
+      required: [uploadURL, objectPath]
+      properties:
+        uploadURL: {type: string}
+        objectPath: {type: string}
+    MemoryType:
+      type: string
+      enum: [appointment, receipt, task, idea, document, note, other]
+    MemoryStatus:
+      type: string
+      enum: [confirmed, needs_review]
+    Memory:
+      type: object
+      required: [id, type, title, summary, raw_text, event_date, amount, currency, people, tags, confidence, status, file_path, created_at]
+      properties:
+        id: {type: integer}
+        type: {$ref: "#/components/schemas/MemoryType"}
+        title: {type: string}
+        summary: {type: [string, "null"]}
+        raw_text: {type: string}
+        event_date: {type: [string, "null"]}
+        amount: {type: [number, "null"]}
+        currency: {type: [string, "null"]}
+        people: {type: array, items: {type: string}}
+        tags: {type: array, items: {type: string}}
+        confidence: {type: integer}
+        status: {$ref: "#/components/schemas/MemoryStatus"}
+        file_path: {type: [string, "null"]}
+        created_at: {type: string}
+    MemoryInput:
+      type: object
+      required: [raw_text]
+      properties:
+        raw_text: {type: string, maxLength: 100000}
+        title: {type: string, maxLength: 200}
+        file_path: {type: [string, "null"]}
+    MemoryUpdate:
+      type: object
+      properties:
+        title: {type: string, minLength: 1, maxLength: 200}
+        raw_text: {type: string, maxLength: 100000}
+        summary: {type: [string, "null"], maxLength: 5000}
+        type: {$ref: "#/components/schemas/MemoryType"}
+        status: {$ref: "#/components/schemas/MemoryStatus"}
+        event_date: {type: [string, "null"]}
+        amount: {type: [number, "null"], minimum: 0}
+        currency: {type: [string, "null"], maxLength: 10}
+        people: {type: array, items: {type: string}, maxItems: 50}
+        tags: {type: array, items: {type: string}, maxItems: 50}
+    MemoryStats:
+      type: object
+      required: [total, needs_review, confirmed]
+      properties:
+        total: {type: integer}
+        needs_review: {type: integer}
+        confirmed: {type: integer}
     HealthStatus:
       type: object
       properties:
