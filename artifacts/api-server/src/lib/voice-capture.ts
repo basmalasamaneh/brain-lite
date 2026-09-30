@@ -13,10 +13,12 @@ export const voiceBody = z.object({
     try { new Intl.DateTimeFormat("en", { timeZone: zone }); return true; } catch { return false; }
   }),
   keep_recording: z.boolean().default(false),
+  space_id: z.string().uuid().optional(),
 }).strict();
 export const plainBody = z.object({
   transcript: z.string().min(1).max(100000).refine((s) => !!s.trim()),
   language: z.enum(["en", "ar"]),
+  space_id: z.string().uuid().optional(),
 }).strict();
 
 export class VoiceError extends Error {

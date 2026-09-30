@@ -13,6 +13,8 @@ export interface BrainQuestion {
      * @maxLength 2000
      */
   question: string;
+  /** Restrict semantic/exact retrieval and SQL totals to confirmed members; permitted confirmed one-hop connections may expand context */
+  space_id?: string;
   language: BrainQuestionLanguage;
   /**
      * Validated IANA timezone for local calendar ranges; defaults to UTC for older clients.

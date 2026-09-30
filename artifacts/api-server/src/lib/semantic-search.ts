@@ -11,7 +11,7 @@ import { buildEmbeddingText, cosine, EMBEDDING_DIMENSIONS, exactBoost, retryDela
 
 type Memory = typeof memoriesTable.$inferSelect;
 export type RankedMemory = { memory: Memory; relevance: number };
-export type SearchFilters = { type?: string; date_from?: string; date_to?: string; timezone?: string };
+export type SearchFilters = { type?: string; date_from?: string; date_to?: string; timezone?: string; space_id?: string };
 let mode: "pgvector" | "double_precision_array" = "double_precision_array";
 export function embeddingStorageMode() { return mode; }
 let initialization: Promise<void> | undefined;
@@ -188,6 +188,7 @@ function sqlFilters(userId: string, filters: SearchFilters, extra?: { minimumAmo
   const values: unknown[] = [userId];
   const clauses = ["m.user_id=$1"];
   const bind = (value: unknown) => { values.push(value); return `$${values.length}`; };
+  if (filters.space_id) clauses.push(`EXISTS(SELECT 1 FROM space_memories sm WHERE sm.user_id=m.user_id AND sm.space_id=${bind(filters.space_id)}::uuid AND sm.memory_id=m.id AND sm.status='confirmed')`);
   if (filters.type && filters.type !== "all") clauses.push(`m.type=${bind(filters.type)}`);
   const calendar = filters.date_from || filters.date_to ? `brain_memory_local_date(m.event_date,${bind(filters.timezone ?? "UTC")})` : "";
   if (filters.date_from) clauses.push(`${calendar}>=${bind(filters.date_from)}`);
@@ -263,17 +264,18 @@ function validStoredVector(vector: unknown): vector is number[] {
     vector.every((value) => typeof value === "number" && Number.isFinite(value));
 }
 
-export async function retrieveForQuestion(userId: string, question: string, timezone = "UTC") {
+export async function retrieveForQuestion(userId: string, question: string, timezone = "UTC", spaceId?: string) {
   await initializeSemanticSearch();
-  const exists = await pool.query("SELECT id FROM memories WHERE user_id=$1 LIMIT 1", [userId]);
+  const initial = sqlFilters(userId, { space_id: spaceId });
+  const exists = await pool.query(`SELECT m.id FROM memories m WHERE ${initial.where} LIMIT 1`, initial.values);
   if (!exists.rowCount) return { related: [] as RankedMemory[], aggregate: undefined };
   const intent = structuredIntent(question, new Date(), timezone);
   let related: RankedMemory[] = intent.active ? [] : await relatedMemories(userId, question, {
-    date_from: intent.from, date_to: intent.to, type: intent.total ? "receipt" : undefined, timezone,
+    date_from: intent.from, date_to: intent.to, type: intent.total ? "receipt" : undefined, timezone, space_id: spaceId,
   });
   let aggregate: unknown;
   if (intent.active) {
-    const scope = sqlFilters(userId, { date_from: intent.from, date_to: intent.to, timezone }, intent);
+    const scope = sqlFilters(userId, { date_from: intent.from, date_to: intent.to, timezone, space_id: spaceId }, intent);
     const currency = "coalesce(nullif(upper(trim(m.currency)),''),'unspecified')";
     const grouped = await pool.query(`SELECT ${currency} AS currency,
       count(*)::int AS count,sum(m.amount) AS total_amount

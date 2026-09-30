@@ -19,6 +19,8 @@ import MemoriesPage from '@/pages/memories';
 import MemoryDetailPage from '@/pages/memory-detail';
 import AskPage from '@/pages/ask';
 import SettingsPage from '@/pages/settings';
+import SpacesPage from '@/pages/spaces';
+import SpaceDetailPage from '@/pages/space-detail';
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } } });
 
@@ -81,6 +83,8 @@ function Router() {
                   <Route path="/memories/:id" component={MemoryDetailPage} />
                   <Route path="/ask" component={AskPage} />
                   <Route path="/settings" component={SettingsPage} />
+                  <Route path="/spaces" component={SpacesPage} />
+                  <Route path="/spaces/:id">{(params) => <SpaceDetailPage key={params.id} />}</Route>
                   <Route component={NotFound} />
                 </Switch>
               </RoutedErrorBoundary>

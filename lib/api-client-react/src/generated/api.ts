@@ -21,6 +21,7 @@ import type {
 
 import type {
   AccountDeletionInput,
+  AddSpaceMemoryBody,
   AuthResult,
   BrainAnswer,
   BrainDeletion,
@@ -36,10 +37,14 @@ import type {
   HealthStatus,
   IndexingStatus,
   ListMemoriesParams,
+  ListSpaceMemoriesParams,
+  ListSpacesParams,
   LoginInput,
   Memory,
   MemoryConnections,
   MemoryInput,
+  MemorySpaceSuggestions,
+  MemorySpaces,
   MemoryStats,
   MemoryUpdate,
   MergeConnection200,
@@ -49,6 +54,13 @@ import type {
   RelatedMemories,
   SearchRelatedParams,
   SignUpInput,
+  SpaceCreationSuggestions,
+  SpaceDetail,
+  SpaceInput,
+  SpaceMemories,
+  SpaceResult,
+  SpaceUpdate,
+  SpacesList,
   UploadUrlRequest,
   UploadUrlResponse,
   VoiceCaptureError,
@@ -84,6 +96,1043 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getListSpacesUrl = (params?: ListSpacesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/spaces?${stringifiedParams}` : `/api/spaces`
+}
+
+export const listSpaces = async (params?: ListSpacesParams, options?: Parameters<typeof customFetch>[1]): Promise<SpacesList> => {
+
+  return customFetch<SpacesList>(getListSpacesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListSpacesQueryKey = (params?: ListSpacesParams,) => {
+    return [
+    `/api/spaces`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListSpacesQueryOptions = <TData = Awaited<ReturnType<typeof listSpaces>>, TError = ErrorType<unknown>>(params?: ListSpacesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSpaces>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListSpacesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSpaces>>> = ({ signal }) => listSpaces(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSpaces>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListSpacesQueryResult = NonNullable<Awaited<ReturnType<typeof listSpaces>>>
+export type ListSpacesQueryError = ErrorType<unknown>
+
+
+
+export function useListSpaces<TData = Awaited<ReturnType<typeof listSpaces>>, TError = ErrorType<unknown>>(
+ params?: ListSpacesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSpaces>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListSpacesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateSpaceUrl = () => {
+
+
+
+
+  return `/api/spaces`
+}
+
+export const createSpace = async (spaceInput: SpaceInput, options?: Parameters<typeof customFetch>[1]): Promise<SpaceResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SpaceResult>(getCreateSpaceUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(spaceInput)
+  }
+);}
+
+
+
+
+
+export const getCreateSpaceMutationKey = () => ['createSpace'] as const;
+
+export const getCreateSpaceMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSpace>>, TError,CreateSpaceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createSpace>>, TError,CreateSpaceMutationVariables, TContext> => {
+
+const mutationKey = getCreateSpaceMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createSpace>>, CreateSpaceMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createSpace(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateSpaceMutationResult = NonNullable<Awaited<ReturnType<typeof createSpace>>>
+    export type CreateSpaceMutationBody = BodyType<SpaceInput>
+    export type CreateSpaceMutationError = ErrorType<unknown>
+    export type CreateSpaceMutationVariables = {data: BodyType<SpaceInput>}
+
+    export const useCreateSpace = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSpace>>, TError,CreateSpaceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createSpace>>,
+        TError,
+        CreateSpaceMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateSpaceMutationOptions(options));
+    }
+
+export const getListSpaceSuggestionsUrl = () => {
+
+
+
+
+  return `/api/spaces/suggestions`
+}
+
+export const listSpaceSuggestions = async ( options?: Parameters<typeof customFetch>[1]): Promise<SpaceCreationSuggestions> => {
+
+  return customFetch<SpaceCreationSuggestions>(getListSpaceSuggestionsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListSpaceSuggestionsQueryKey = () => {
+    return [
+    `/api/spaces/suggestions`
+    ] as const;
+    }
+
+
+export const getListSpaceSuggestionsQueryOptions = <TData = Awaited<ReturnType<typeof listSpaceSuggestions>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSpaceSuggestions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListSpaceSuggestionsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSpaceSuggestions>>> = ({ signal }) => listSpaceSuggestions({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSpaceSuggestions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListSpaceSuggestionsQueryResult = NonNullable<Awaited<ReturnType<typeof listSpaceSuggestions>>>
+export type ListSpaceSuggestionsQueryError = ErrorType<unknown>
+
+
+
+export function useListSpaceSuggestions<TData = Awaited<ReturnType<typeof listSpaceSuggestions>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSpaceSuggestions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListSpaceSuggestionsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getConfirmSpaceSuggestionUrl = (id: string,) => {
+
+
+
+
+  return `/api/spaces/suggestions/${id}/confirm`
+}
+
+export const confirmSpaceSuggestion = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<SpaceResult> => {
+
+  return customFetch<SpaceResult>(getConfirmSpaceSuggestionUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getConfirmSpaceSuggestionMutationKey = () => ['confirmSpaceSuggestion'] as const;
+
+export const getConfirmSpaceSuggestionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmSpaceSuggestion>>, TError,ConfirmSpaceSuggestionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmSpaceSuggestion>>, TError,ConfirmSpaceSuggestionMutationVariables, TContext> => {
+
+const mutationKey = getConfirmSpaceSuggestionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmSpaceSuggestion>>, ConfirmSpaceSuggestionMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  confirmSpaceSuggestion(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmSpaceSuggestionMutationResult = NonNullable<Awaited<ReturnType<typeof confirmSpaceSuggestion>>>
+
+    export type ConfirmSpaceSuggestionMutationError = ErrorType<void>
+    export type ConfirmSpaceSuggestionMutationVariables = {id: string}
+
+    export const useConfirmSpaceSuggestion = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmSpaceSuggestion>>, TError,ConfirmSpaceSuggestionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof confirmSpaceSuggestion>>,
+        TError,
+        ConfirmSpaceSuggestionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getConfirmSpaceSuggestionMutationOptions(options));
+    }
+
+export const getDismissSpaceSuggestionUrl = (id: string,) => {
+
+
+
+
+  return `/api/spaces/suggestions/${id}/dismiss`
+}
+
+export const dismissSpaceSuggestion = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDismissSpaceSuggestionUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getDismissSpaceSuggestionMutationKey = () => ['dismissSpaceSuggestion'] as const;
+
+export const getDismissSpaceSuggestionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof dismissSpaceSuggestion>>, TError,DismissSpaceSuggestionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof dismissSpaceSuggestion>>, TError,DismissSpaceSuggestionMutationVariables, TContext> => {
+
+const mutationKey = getDismissSpaceSuggestionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof dismissSpaceSuggestion>>, DismissSpaceSuggestionMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  dismissSpaceSuggestion(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DismissSpaceSuggestionMutationResult = NonNullable<Awaited<ReturnType<typeof dismissSpaceSuggestion>>>
+
+    export type DismissSpaceSuggestionMutationError = ErrorType<void>
+    export type DismissSpaceSuggestionMutationVariables = {id: string}
+
+    export const useDismissSpaceSuggestion = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof dismissSpaceSuggestion>>, TError,DismissSpaceSuggestionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof dismissSpaceSuggestion>>,
+        TError,
+        DismissSpaceSuggestionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDismissSpaceSuggestionMutationOptions(options));
+    }
+
+export const getGetSpaceUrl = (id: string,) => {
+
+
+
+
+  return `/api/spaces/${id}`
+}
+
+export const getSpace = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<SpaceDetail> => {
+
+  return customFetch<SpaceDetail>(getGetSpaceUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSpaceQueryKey = (id: string,) => {
+    return [
+    `/api/spaces/${id}`
+    ] as const;
+    }
+
+
+export const getGetSpaceQueryOptions = <TData = Awaited<ReturnType<typeof getSpace>>, TError = ErrorType<void>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSpace>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSpaceQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSpace>>> = ({ signal }) => getSpace(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSpace>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSpaceQueryResult = NonNullable<Awaited<ReturnType<typeof getSpace>>>
+export type GetSpaceQueryError = ErrorType<void>
+
+
+
+export function useGetSpace<TData = Awaited<ReturnType<typeof getSpace>>, TError = ErrorType<void>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSpace>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSpaceQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateSpaceUrl = (id: string,) => {
+
+
+
+
+  return `/api/spaces/${id}`
+}
+
+export const updateSpace = async (id: string,
+    spaceUpdate: SpaceUpdate, options?: Parameters<typeof customFetch>[1]): Promise<SpaceResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SpaceResult>(getUpdateSpaceUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(spaceUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateSpaceMutationKey = () => ['updateSpace'] as const;
+
+export const getUpdateSpaceMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSpace>>, TError,UpdateSpaceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateSpace>>, TError,UpdateSpaceMutationVariables, TContext> => {
+
+const mutationKey = getUpdateSpaceMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateSpace>>, UpdateSpaceMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateSpace(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateSpaceMutationResult = NonNullable<Awaited<ReturnType<typeof updateSpace>>>
+    export type UpdateSpaceMutationBody = BodyType<SpaceUpdate>
+    export type UpdateSpaceMutationError = ErrorType<void>
+    export type UpdateSpaceMutationVariables = {id: string;data: BodyType<SpaceUpdate>}
+
+    export const useUpdateSpace = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSpace>>, TError,UpdateSpaceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateSpace>>,
+        TError,
+        UpdateSpaceMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateSpaceMutationOptions(options));
+    }
+
+export const getDeleteSpaceUrl = (id: string,) => {
+
+
+
+
+  return `/api/spaces/${id}`
+}
+
+export const deleteSpace = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteSpaceUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteSpaceMutationKey = () => ['deleteSpace'] as const;
+
+export const getDeleteSpaceMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteSpace>>, TError,DeleteSpaceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteSpace>>, TError,DeleteSpaceMutationVariables, TContext> => {
+
+const mutationKey = getDeleteSpaceMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteSpace>>, DeleteSpaceMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteSpace(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteSpaceMutationResult = NonNullable<Awaited<ReturnType<typeof deleteSpace>>>
+
+    export type DeleteSpaceMutationError = ErrorType<void>
+    export type DeleteSpaceMutationVariables = {id: string}
+
+    export const useDeleteSpace = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteSpace>>, TError,DeleteSpaceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteSpace>>,
+        TError,
+        DeleteSpaceMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteSpaceMutationOptions(options));
+    }
+
+export const getListSpaceMemoriesUrl = (id: string,
+    params?: ListSpaceMemoriesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/spaces/${id}/memories?${stringifiedParams}` : `/api/spaces/${id}/memories`
+}
+
+export const listSpaceMemories = async (id: string,
+    params?: ListSpaceMemoriesParams, options?: Parameters<typeof customFetch>[1]): Promise<SpaceMemories> => {
+
+  return customFetch<SpaceMemories>(getListSpaceMemoriesUrl(id,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListSpaceMemoriesQueryKey = (id: string,
+    params?: ListSpaceMemoriesParams,) => {
+    return [
+    `/api/spaces/${id}/memories`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListSpaceMemoriesQueryOptions = <TData = Awaited<ReturnType<typeof listSpaceMemories>>, TError = ErrorType<void>>(id: string,
+    params?: ListSpaceMemoriesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSpaceMemories>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListSpaceMemoriesQueryKey(id,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSpaceMemories>>> = ({ signal }) => listSpaceMemories(id,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSpaceMemories>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListSpaceMemoriesQueryResult = NonNullable<Awaited<ReturnType<typeof listSpaceMemories>>>
+export type ListSpaceMemoriesQueryError = ErrorType<void>
+
+
+
+export function useListSpaceMemories<TData = Awaited<ReturnType<typeof listSpaceMemories>>, TError = ErrorType<void>>(
+ id: string,
+    params?: ListSpaceMemoriesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSpaceMemories>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListSpaceMemoriesQueryOptions(id,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getAddSpaceMemoryUrl = (id: string,) => {
+
+
+
+
+  return `/api/spaces/${id}/memories`
+}
+
+export const addSpaceMemory = async (id: string,
+    addSpaceMemoryBody: AddSpaceMemoryBody, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<void>(getAddSpaceMemoryUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(addSpaceMemoryBody)
+  }
+);}
+
+
+
+
+
+export const getAddSpaceMemoryMutationKey = () => ['addSpaceMemory'] as const;
+
+export const getAddSpaceMemoryMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addSpaceMemory>>, TError,AddSpaceMemoryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addSpaceMemory>>, TError,AddSpaceMemoryMutationVariables, TContext> => {
+
+const mutationKey = getAddSpaceMemoryMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addSpaceMemory>>, AddSpaceMemoryMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  addSpaceMemory(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AddSpaceMemoryMutationResult = NonNullable<Awaited<ReturnType<typeof addSpaceMemory>>>
+    export type AddSpaceMemoryMutationBody = BodyType<AddSpaceMemoryBody>
+    export type AddSpaceMemoryMutationError = ErrorType<void>
+    export type AddSpaceMemoryMutationVariables = {id: string;data: BodyType<AddSpaceMemoryBody>}
+
+    export const useAddSpaceMemory = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addSpaceMemory>>, TError,AddSpaceMemoryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof addSpaceMemory>>,
+        TError,
+        AddSpaceMemoryMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAddSpaceMemoryMutationOptions(options));
+    }
+
+export const getDismissSpaceMemoryUrl = (id: string,
+    memoryId: number,) => {
+
+
+
+
+  return `/api/spaces/${id}/memories/${memoryId}`
+}
+
+export const dismissSpaceMemory = async (id: string,
+    memoryId: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDismissSpaceMemoryUrl(id,memoryId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDismissSpaceMemoryMutationKey = () => ['dismissSpaceMemory'] as const;
+
+export const getDismissSpaceMemoryMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof dismissSpaceMemory>>, TError,DismissSpaceMemoryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof dismissSpaceMemory>>, TError,DismissSpaceMemoryMutationVariables, TContext> => {
+
+const mutationKey = getDismissSpaceMemoryMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof dismissSpaceMemory>>, DismissSpaceMemoryMutationVariables> = (props) => {
+          const {id,memoryId} = props ?? {};
+
+          return  dismissSpaceMemory(id,memoryId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DismissSpaceMemoryMutationResult = NonNullable<Awaited<ReturnType<typeof dismissSpaceMemory>>>
+
+    export type DismissSpaceMemoryMutationError = ErrorType<void>
+    export type DismissSpaceMemoryMutationVariables = {id: string;memoryId: number}
+
+    export const useDismissSpaceMemory = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof dismissSpaceMemory>>, TError,DismissSpaceMemoryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof dismissSpaceMemory>>,
+        TError,
+        DismissSpaceMemoryMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDismissSpaceMemoryMutationOptions(options));
+    }
+
+export const getHideSpaceProfileItemUrl = (id: string,
+    itemId: string,) => {
+
+
+
+
+  return `/api/spaces/${id}/profile/${itemId}`
+}
+
+export const hideSpaceProfileItem = async (id: string,
+    itemId: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getHideSpaceProfileItemUrl(id,itemId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getHideSpaceProfileItemMutationKey = () => ['hideSpaceProfileItem'] as const;
+
+export const getHideSpaceProfileItemMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof hideSpaceProfileItem>>, TError,HideSpaceProfileItemMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof hideSpaceProfileItem>>, TError,HideSpaceProfileItemMutationVariables, TContext> => {
+
+const mutationKey = getHideSpaceProfileItemMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof hideSpaceProfileItem>>, HideSpaceProfileItemMutationVariables> = (props) => {
+          const {id,itemId} = props ?? {};
+
+          return  hideSpaceProfileItem(id,itemId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type HideSpaceProfileItemMutationResult = NonNullable<Awaited<ReturnType<typeof hideSpaceProfileItem>>>
+
+    export type HideSpaceProfileItemMutationError = ErrorType<void>
+    export type HideSpaceProfileItemMutationVariables = {id: string;itemId: string}
+
+    export const useHideSpaceProfileItem = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof hideSpaceProfileItem>>, TError,HideSpaceProfileItemMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof hideSpaceProfileItem>>,
+        TError,
+        HideSpaceProfileItemMutationVariables,
+        TContext
+      > => {
+      return useMutation(getHideSpaceProfileItemMutationOptions(options));
+    }
+
+export const getListMemorySpacesUrl = (id: number,) => {
+
+
+
+
+  return `/api/memories/${id}/spaces`
+}
+
+export const listMemorySpaces = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<MemorySpaces> => {
+
+  return customFetch<MemorySpaces>(getListMemorySpacesUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMemorySpacesQueryKey = (id: number,) => {
+    return [
+    `/api/memories/${id}/spaces`
+    ] as const;
+    }
+
+
+export const getListMemorySpacesQueryOptions = <TData = Awaited<ReturnType<typeof listMemorySpaces>>, TError = ErrorType<void>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMemorySpaces>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListMemorySpacesQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMemorySpaces>>> = ({ signal }) => listMemorySpaces(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMemorySpaces>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListMemorySpacesQueryResult = NonNullable<Awaited<ReturnType<typeof listMemorySpaces>>>
+export type ListMemorySpacesQueryError = ErrorType<void>
+
+
+
+export function useListMemorySpaces<TData = Awaited<ReturnType<typeof listMemorySpaces>>, TError = ErrorType<void>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMemorySpaces>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListMemorySpacesQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListMemorySpaceSuggestionsUrl = (id: number,) => {
+
+
+
+
+  return `/api/memories/${id}/space-suggestions`
+}
+
+export const listMemorySpaceSuggestions = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<MemorySpaceSuggestions> => {
+
+  return customFetch<MemorySpaceSuggestions>(getListMemorySpaceSuggestionsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMemorySpaceSuggestionsQueryKey = (id: number,) => {
+    return [
+    `/api/memories/${id}/space-suggestions`
+    ] as const;
+    }
+
+
+export const getListMemorySpaceSuggestionsQueryOptions = <TData = Awaited<ReturnType<typeof listMemorySpaceSuggestions>>, TError = ErrorType<void>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMemorySpaceSuggestions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListMemorySpaceSuggestionsQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMemorySpaceSuggestions>>> = ({ signal }) => listMemorySpaceSuggestions(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMemorySpaceSuggestions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListMemorySpaceSuggestionsQueryResult = NonNullable<Awaited<ReturnType<typeof listMemorySpaceSuggestions>>>
+export type ListMemorySpaceSuggestionsQueryError = ErrorType<void>
+
+
+
+export function useListMemorySpaceSuggestions<TData = Awaited<ReturnType<typeof listMemorySpaceSuggestions>>, TError = ErrorType<void>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMemorySpaceSuggestions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListMemorySpaceSuggestionsQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetConnectionSuggestionsUrl = () => {
 

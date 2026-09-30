@@ -7,6 +7,7 @@ import brainRouter from "./brain";
 import voiceRouter from "./voice";
 import semanticRouter from "./semantic";
 import connectionsRouter from "./connections";
+import spacesRouter from "./spaces";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(brainRouter);
 router.use(voiceRouter);
 router.use(semanticRouter);
 router.use(connectionsRouter);
+router.use(spacesRouter);
 
 export default router;

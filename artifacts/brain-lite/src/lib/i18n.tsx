@@ -65,6 +65,7 @@ const en = {
   organized: 'organized', needConfirmation: 'need confirmation', savedPlain: 'Saved',
 
   navSettings: 'Settings',
+  navSpaces: 'Spaces',
   switchTheme: 'Switch theme', mainNav: 'Main navigation',
   optWrite: 'Write', optWriteHint: 'Type a note', optPhoto: 'Photo', optPhotoHint: 'Camera or gallery', optFile: 'File', optFileHint: 'PDF or image',
   captureHint: 'One thing per memory keeps answers precise.', dropRelease: 'Release to attach',
@@ -163,6 +164,7 @@ const ar: Base = {
   organized: 'منظّمة', needConfirmation: 'تحتاج تأكيدًا', savedPlain: 'حُفظت',
 
   navSettings: 'الإعدادات',
+  navSpaces: 'المساحات',
   switchTheme: 'تبديل المظهر', mainNav: 'التنقل الرئيسي',
   optWrite: 'كتابة', optWriteHint: 'دوّن ملاحظة', optPhoto: 'صورة', optPhotoHint: 'الكاميرا أو المعرض', optFile: 'ملف', optFileHint: 'PDF أو صورة',
   captureHint: 'خصّص كل ذكرى لأمر واحد لتكون الإجابات أدق.', dropRelease: 'أفلِت الملف لإرفاقه',

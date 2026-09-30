@@ -12,6 +12,9 @@ import { createCalendarEvent, validEventDate } from "../lib/calendar";
 import { activeCaptures, deletingUsers } from "../lib/brain-state";
 import rateLimit from "express-rate-limit";
 import { validDateFilter } from "../lib/semantic-utils";
+import { confirmCaptured, requireSpace } from "../lib/spaces";
+import { spaceIdBody } from "../lib/spaces-utils";
+import { ConnectionError } from "../lib/connections";
 
 const router: IRouter = Router();
 const captureLimiter = rateLimit({ windowMs: 60 * 60 * 1000, limit: 30,
@@ -95,13 +98,20 @@ router.delete("/memories/samples", async (req, res): Promise<void> => {
 
 router.post("/memories", captureLimiter, async (req, res): Promise<void> => {
   if (!req.isAuthenticated()) { res.status(401).json({ error: "Please sign in to save memories" }); return; }
-  const parsed = CreateMemoryBody.safeParse(req.body);
+  const parsed = CreateMemoryBody.extend({ space_id: spaceIdBody }).safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid capture" }); return; }
   const data = parsed.data;
   if (!data.raw_text.trim() && !data.file_path) {
     res.status(400).json({ error: "Add some text or attach a file" }); return;
   }
   const userId = req.user.id;
+  if (data.space_id) {
+    try { await requireSpace(userId, data.space_id); }
+    catch (error) {
+      if (error instanceof ConnectionError) { res.status(error.status).json({ error: error.message }); return; }
+      throw error;
+    }
+  }
   if (activeCaptures.has(userId)) {
     res.status(429).json({ error: "A capture is already processing. Please wait." }); return;
   }
@@ -126,7 +136,8 @@ router.post("/memories", captureLimiter, async (req, res): Promise<void> => {
     if (!extracted.ok) req.log.warn({ reason: extracted.reason }, "Capture saved without AI extraction");
     const fallbackTitle = data.title?.trim() || data.raw_text.trim().split("\n")[0].slice(0, 100) ||
       attachment?.name || (data.language === "ar" ? "مرفق بدون عنوان" : "Untitled attachment");
-    const [row] = await db.insert(memoriesTable).values({
+    const row = await db.transaction(async (tx) => {
+    const [created] = await tx.insert(memoriesTable).values({
       userId,
       title: fallbackTitle,
       type: "note", status: "needs_review", confidence: 0,
@@ -139,8 +150,12 @@ router.post("/memories", captureLimiter, async (req, res): Promise<void> => {
       extraction_status: extracted.ok ? "extracted" : "fallback",
       extraction_error: extracted.ok ? null : extracted.reason,
     }).returning();
+    await confirmCaptured(tx, userId, data.space_id, [created.id]);
+    return created;
+    });
     res.status(201).json(GetMemoryResponse.parse(serialize(row)));
   } catch (error) {
+    if (error instanceof ConnectionError) { res.status(error.status).json({ error: error.message }); return; }
     if (error instanceof CaptureFileError) {
       res.status(error.status).json({ error: error.message }); return;
     }

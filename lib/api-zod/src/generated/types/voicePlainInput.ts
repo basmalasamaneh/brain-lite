@@ -14,4 +14,5 @@ export interface VoicePlainInput {
      */
   transcript: string;
   language: VoicePlainInputLanguage;
+  space_id?: string;
 }

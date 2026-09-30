@@ -1,0 +1,33 @@
+Add "Spaces" to Brain Lite: a Space is a page that gathers everything related to one Project, Person, Trip, or Topic. This app is MOBILE-FIRST. Do not break any existing feature, and keep the gold design system, EN/AR RTL, auth, per-user data isolation, embeddings, and Connect the Dots exactly as they are.
+
+DATABASE (safe migration):
+- Table `spaces` (id, user_id NOT NULL FK ON DELETE CASCADE, kind [project|person|trip|topic], name, description, icon, color, pinned boolean, archived boolean, created_at, updated_at).
+- Table `space_memories` (space_id, memory_id, source [ai|manual], status [suggested|confirmed|dismissed], PRIMARY KEY (space_id, memory_id)). A dismissed pair must never be suggested again. A memory can belong to several Spaces.
+- Every query filters by the logged-in user's id.
+
+CREATING SPACES:
+- "New Space" from a Spaces screen: choose kind with big icon buttons, enter a name, optional description, pick an icon and an accent (gold tones).
+- AI suggestion: when the user saves a memory whose people/tags/title repeat across 3 or more memories and no Space exists for it, suggest "Create a Space for 'Sara'?" as a dismissible card. Never auto-create without confirmation.
+- When a new memory is saved, find the best matching existing Space (by people/tags and embedding similarity to the Space's memories, this user only) and suggest adding it. Use one Gemini call that returns ONLY valid JSON: { "matches": [ { "space_id": "", "confidence": 0-100, "reason": "" } ] }. Only suggest at confidence >= 75, never invent, and write the reason in the memory's language. Respect Gemini free-tier limits and the existing AI rate limits.
+
+SPACE PAGE (mobile first):
+- Header: icon, name, kind chip, short description, and a gold line of counts ("12 memories · 3 upcoming · 2 tasks").
+- "What's next" card: upcoming dates and open tasks inside this Space.
+- Tabs or chips to filter inside the Space: All, Events, Documents, Tasks, Notes, Links. Memories listed as compact cards in a timeline grouped by month.
+- "Ask this Space": an input that uses Ask Your Brain but restricted to this Space's memories (plus their confirmed connections).
+- "Suggested" section with pending memories to add (Add / Not related).
+- Person Spaces show a clean "profile" header: name, last interaction date, and related contacts and notes extracted from memories. Include a clear note of what is stored and why, and let the user remove anything.
+- Actions: add a new memory directly into the Space (Capture preselected), edit, pin, archive, delete (confirm dialog; deleting a Space never deletes its memories).
+
+NAVIGATION AND UX:
+- Add a Spaces section to Home (horizontal scroll of pinned Spaces as gold-bordered cards) and a dedicated Spaces screen reachable from the bottom navigation or Home. Keep the bottom bar uncluttered: if it gets crowded, move Settings into the header avatar menu.
+- On a memory detail page, show Space chips and an "Add to Space" bottom sheet (search + create new).
+- Empty states with friendly copy ("Group what matters. Create your first Space.").
+- Everything works at 390px: no horizontal scroll, 44px+ tap targets, safe-area aware sheets, RTL mirroring, gold shimmer skeletons, toasts, and smooth framer-motion transitions.
+
+SECURITY:
+- Every Space and link query filters by user_id. Return 404 for other users' Spaces. Test with two accounts.
+
+TESTING:
+- Create a person Space "Sara", a trip Space "Jordan Trip", and a project Space. Verify AI suggestions, dismissals that never return, Ask inside a Space, multi-Space membership, and deletion behavior. Test Arabic and English.
+Then list what you changed.

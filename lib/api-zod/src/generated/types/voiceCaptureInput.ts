@@ -24,4 +24,6 @@ export interface VoiceCaptureInput {
      */
   timezone: string;
   keep_recording?: boolean;
+  /** Owned Space; capture and confirmed memberships commit atomically */
+  space_id?: string;
 }

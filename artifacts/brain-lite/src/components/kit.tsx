@@ -82,22 +82,22 @@ export function MemoryCard({ memory, index = 0 }: { memory: Memory; index?: numb
   const date = memory.event_date ?? memory.created_at;
   const amount = formatAmount(memory.amount, memory.currency, lang);
   return (
-    <Link href={`/memories/${memory.id}`} className="group block rise rounded-2xl" style={{ animationDelay: `${Math.min(index, 10) * 45}ms` }} data-testid={`card-memory-${memory.id}`}>
+    <Link href={`/memories/${memory.id}`} className="group block rise min-w-0 max-w-full rounded-2xl" style={{ animationDelay: `${Math.min(index, 10) * 45}ms` }} data-testid={`card-memory-${memory.id}`}>
       <Surface className="lift relative flex gap-4 p-4 sm:p-5 group-hover:border-gold-400/50">
         <span className={cn('absolute end-4 top-4 h-2.5 w-2.5 rounded-full ring-4', memory.status === 'needs_review' ? 'bg-warning ring-warning/15' : 'bg-success ring-success/15')} aria-hidden data-testid={`dot-status-${memory.id}`} />
         <TypeIcon type={memory.type} />
         <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-3">
-            <h3 className="font-display flex min-w-0 items-center gap-2 pe-5 text-xl"><span className="truncate">{memory.title}</span>{isSample(memory) && <SampleBadge />}</h3>
+          <div className="flex min-w-0 items-start justify-between gap-3">
+            <h3 className="font-display flex min-w-0 flex-1 items-center gap-2 pe-5 text-xl"><span className="min-w-0 truncate">{memory.title}</span>{isSample(memory) && <SampleBadge />}</h3>
             <ArrowUpRight className="mt-6 h-4 w-4 shrink-0 text-gold opacity-0 transition group-hover:opacity-100 rtl:-scale-x-100" />
           </div>
-          <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{memory.summary || memory.raw_text}</p>
-          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <p className="mt-1 line-clamp-2 break-words text-sm text-muted-foreground [overflow-wrap:anywhere]">{memory.summary || memory.raw_text}</p>
+          <div className="mt-3 flex min-w-0 flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <StatusPill status={memory.status} />
-            <span className="tabular-nums">{formatDate(date, lang)}</span>
-            {amount && <span className="font-medium text-foreground/80">· {amount}</span>}
+            <span className="min-w-0 max-w-full break-words tabular-nums">{formatDate(date, lang)}</span>
+            {amount && <span className="min-w-0 max-w-full break-words font-medium text-foreground/80 [overflow-wrap:anywhere]">· {amount}</span>}
             {memory.file_path && <Paperclip className="h-3.5 w-3.5" />}
-            {memory.tags.slice(0, 2).map((tag) => <span key={tag} className="max-w-full truncate rounded-md bg-muted px-1.5 py-0.5">#{tag}</span>)}
+            {memory.tags.slice(0, 2).map((tag) => <span key={tag} className="min-w-0 max-w-full truncate rounded-md bg-muted px-1.5 py-0.5">#{tag}</span>)}
           </div>
         </div>
       </Surface>

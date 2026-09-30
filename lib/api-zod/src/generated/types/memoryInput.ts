@@ -10,6 +10,7 @@ import type { MemoryInputLanguage } from './memoryInputLanguage';
 export interface MemoryInput {
   /** @maxLength 100000 */
   raw_text: string;
+  space_id?: string;
   /** @maxLength 200 */
   title?: string;
   /** @nullable */

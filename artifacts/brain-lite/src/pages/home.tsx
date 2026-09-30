@@ -11,6 +11,7 @@ import { ErrorState, MemoryCardSkeleton, SampleBanner, Surface } from '@/compone
 import { DailyBriefSection } from '@/components/daily-brief';
 
 import { IconCircle } from '@/components/brand';
+import { HomeSpaces } from '@/components/spaces';
 export default function HomePage() {
   const { t, lang } = useI18n();
   usePageTitle(t('navHome'));
@@ -37,6 +38,7 @@ export default function HomePage() {
     <>
       <SampleBanner />
       <DailyBriefSection />
+      <HomeSpaces />
 
       <section className="rise mb-10" data-testid="section-inbox">
         <div className="mb-4 flex flex-wrap items-end justify-between gap-2">

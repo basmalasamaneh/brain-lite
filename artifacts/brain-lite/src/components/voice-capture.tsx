@@ -12,6 +12,7 @@ import { CalendarLink, ConfidenceMeter } from '@/components/extraction';
 import { PulseStar } from '@/components/motion';
 import { TypeChip, btnGhost, btnPrimary, fieldCls } from '@/components/kit';
 import { cn } from '@/lib/utils';
+import { spaceText } from '@/lib/i18n-spaces';
 
 type VoiceResponse = { transcript: string; memories: Memory[] };
 
@@ -71,7 +72,7 @@ async function postVoice(url: string, data: object, signal: AbortSignal): Promis
   return res.json();
 }
 
-export function VoiceCapture({ disabled = false, needsLogin = false, onLogin }: { disabled?: boolean; needsLogin?: boolean; onLogin: () => void }) {
+export function VoiceCapture({ disabled = false, needsLogin = false, onLogin, spaceId, spaceName }: { disabled?: boolean; needsLogin?: boolean; onLogin: () => void; spaceId?: string; spaceName?: string }) {
   const { lang } = useI18n();
   const v = (key: VoiceKey) => voiceText(lang, key);
   const [open, setOpen] = useState(false);
@@ -116,6 +117,7 @@ export function VoiceCapture({ disabled = false, needsLogin = false, onLogin }: 
       if (controller.signal.aborted) return;
       const response = await postVoice('/api/capture/voice', {
         audio_base64, mime_type: recorder.audio.type.split(';')[0], language: lang, timezone: timezone(), keep_recording: keep,
+        ...(spaceId ? { space_id: spaceId } : {}),
       }, controller.signal) as VoiceResponse;
       if (!Array.isArray(response.memories) || !response.memories.length) throw new Error('noItems');
       invalidate();
@@ -139,7 +141,7 @@ export function VoiceCapture({ disabled = false, needsLogin = false, onLogin }: 
     request.current = controller;
     setPlainSaving(true); setRequestError(null);
     try {
-      const memory = await postVoice('/api/capture/voice/plain', { transcript: plainText.trim(), language: lang }, controller.signal) as Memory;
+      const memory = await postVoice('/api/capture/voice/plain', { transcript: plainText.trim(), language: lang, ...(spaceId ? { space_id: spaceId } : {}) }, controller.signal) as Memory;
       if (!memory?.id) throw new Error('Invalid memory response');
       invalidate(memory.id);
       setResult({ transcript: plainText.trim(), memories: [memory] });
@@ -190,6 +192,7 @@ export function VoiceCapture({ disabled = false, needsLogin = false, onLogin }: 
             <SheetTitle className="font-display text-2xl">{result ? v('result') : recorder.phase === 'recording' ? v('recording') : processing ? v('processing') : recorder.phase === 'preview' ? v('preview') : v('permissionTitle')}</SheetTitle>
             <SheetDescription>{result ? v('saved') : processing ? v('wait') : recorder.phase === 'intro' ? v('permission') : keep ? v('privacyKept') : v('privacy')}</SheetDescription>
           </SheetHeader>
+          {spaceName && <p className="mt-3 break-words rounded-xl border border-gold-400/40 bg-gold-soft p-3 text-sm text-gold">{spaceText(lang, 'storedIn')}: {spaceName}</p>}
           <div className="flex min-h-0 flex-1 flex-col justify-center gap-5 py-5">
             {result ? (
               <div className="space-y-4 overflow-y-auto">

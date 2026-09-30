@@ -11,6 +11,163 @@ tags:
   - name: health
     description: Health operations
 paths:
+  /spaces:
+    get:
+      operationId: listSpaces
+      parameters:
+        - {name: archived, in: query, schema: {type: boolean}}
+      responses:
+        "200":
+          description: Owned spaces with confirmed membership counts
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/SpacesList"}
+    post:
+      operationId: createSpace
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/SpaceInput"}
+      responses:
+        "201":
+          description: Created Space; existing memories queued for suggestions
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/SpaceResult"}
+  /spaces/suggestions:
+    get:
+      operationId: listSpaceSuggestions
+      responses:
+        "200":
+          description: Repeated own entities with no existing Space; never auto-created
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/SpaceCreationSuggestions"}
+  /spaces/suggestions/{id}/confirm:
+    post:
+      operationId: confirmSpaceSuggestion
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Confirmed Space
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/SpaceResult"}
+        "404": {description: Suggestion not owned}
+        "409": {description: Dismissed suggestion is terminal}
+  /spaces/suggestions/{id}/dismiss:
+    post:
+      operationId: dismissSpaceSuggestion
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "204": {description: Permanently dismissed}
+        "404": {description: Suggestion not owned}
+  /spaces/{id}:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+    get:
+      operationId: getSpace
+      responses:
+        "200":
+          description: Space overview, confirmed members only; deterministic profile with provenance
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/SpaceDetail"}
+        "404": {description: Space not owned}
+    patch:
+      operationId: updateSpace
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/SpaceUpdate"}
+      responses:
+        "200":
+          description: Updated Space
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/SpaceResult"}
+        "404": {description: Space not owned}
+    delete:
+      operationId: deleteSpace
+      responses:
+        "204": {description: Space deleted; original memories preserved}
+        "404": {description: Space not owned}
+  /spaces/{id}/memories:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+    get:
+      operationId: listSpaceMemories
+      parameters:
+        - {name: filter, in: query, schema: {type: string, enum: [all, events, documents, tasks, notes, links]}}
+      responses:
+        "200":
+          description: Confirmed timeline and pending AI memberships
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/SpaceMemories"}
+        "404": {description: Space not owned}
+    post:
+      operationId: addSpaceMemory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [memory_id]
+              properties:
+                memory_id: {type: integer, minimum: 1}
+      responses:
+        "204": {description: Confirmed manual membership}
+        "404": {description: Space or memory not owned}
+        "409": {description: Dismissed membership is terminal}
+  /spaces/{id}/memories/{memoryId}:
+    delete:
+      operationId: dismissSpaceMemory
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: memoryId, in: path, required: true, schema: {type: integer, minimum: 1}}
+      responses:
+        "204": {description: Membership terminally dismissed; original memory preserved}
+        "404": {description: Space or memory not owned}
+  /spaces/{id}/profile/{itemId}:
+    delete:
+      operationId: hideSpaceProfileItem
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: itemId, in: path, required: true, schema: {type: string}}
+      responses:
+        "204": {description: Derived item persistently hidden; original memory preserved}
+        "404": {description: Space or profile item not owned}
+  /memories/{id}/spaces:
+    get:
+      operationId: listMemorySpaces
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, minimum: 1}}
+      responses:
+        "200":
+          description: Confirmed Spaces for this owned memory
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/MemorySpaces"}
+        "404": {description: Memory not owned}
+  /memories/{id}/space-suggestions:
+    get:
+      operationId: listMemorySpaceSuggestions
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, minimum: 1}}
+      responses:
+        "200":
+          description: Efficient owned pending memberships, excluding archived Spaces
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/MemorySpaceSuggestions"}
+        "404": {description: Memory not owned}
   /connections/suggestions:
     get:
       operationId: getConnectionSuggestions
@@ -481,6 +638,141 @@ paths:
                 $ref: "#/components/schemas/HealthStatus"
 components:
   schemas:
+    SpaceKind:
+      type: string
+      enum: [project, person, trip, topic]
+    SpaceColor:
+      type: string
+      enum: [gold, amber, bronze, sand]
+    SpaceIcon:
+      type: string
+      enum: [briefcase, user, plane, hash, heart, book, sparkles, map]
+    SpaceInput:
+      type: object
+      additionalProperties: false
+      required: [kind, name]
+      properties:
+        kind: {$ref: "#/components/schemas/SpaceKind"}
+        name: {type: string, minLength: 1, maxLength: 120}
+        description: {type: [string, "null"], maxLength: 2000}
+        icon: {$ref: "#/components/schemas/SpaceIcon"}
+        color: {$ref: "#/components/schemas/SpaceColor"}
+        pinned: {type: boolean}
+        archived: {type: boolean}
+    SpaceUpdate:
+      type: object
+      additionalProperties: false
+      properties:
+        kind: {$ref: "#/components/schemas/SpaceKind"}
+        name: {type: string, minLength: 1, maxLength: 120}
+        description: {type: [string, "null"], maxLength: 2000}
+        icon: {$ref: "#/components/schemas/SpaceIcon"}
+        color: {$ref: "#/components/schemas/SpaceColor"}
+        pinned: {type: boolean}
+        archived: {type: boolean}
+    Space:
+      type: object
+      required: [id, kind, name, description, icon, color, pinned, archived, created_at, updated_at]
+      properties:
+        id: {type: string, format: uuid}
+        kind: {$ref: "#/components/schemas/SpaceKind"}
+        name: {type: string}
+        description: {type: [string, "null"]}
+        icon: {$ref: "#/components/schemas/SpaceIcon"}
+        color: {$ref: "#/components/schemas/SpaceColor"}
+        pinned: {type: boolean}
+        archived: {type: boolean}
+        created_at: {type: string}
+        updated_at: {type: string}
+    SpaceWithCount:
+      allOf:
+        - {$ref: "#/components/schemas/Space"}
+        - type: object
+          required: [memory_count]
+          properties:
+            memory_count: {type: integer}
+    SpacesList:
+      type: object
+      required: [spaces]
+      properties:
+        spaces: {type: array, items: {$ref: "#/components/schemas/SpaceWithCount"}}
+    SpaceResult:
+      type: object
+      required: [space]
+      properties:
+        space: {$ref: "#/components/schemas/Space"}
+    MemorySpaces:
+      type: object
+      required: [spaces]
+      properties:
+        spaces: {type: array, items: {$ref: "#/components/schemas/Space"}}
+    SpaceCreationSuggestion:
+      type: object
+      required: [id, kind, name, reason]
+      properties:
+        id: {type: string, format: uuid}
+        kind: {$ref: "#/components/schemas/SpaceKind"}
+        name: {type: string}
+        reason: {type: string}
+    SpaceCreationSuggestions:
+      type: object
+      required: [suggestions]
+      properties:
+        suggestions: {type: array, items: {$ref: "#/components/schemas/SpaceCreationSuggestion"}}
+    SpaceMemorySuggestion:
+      type: object
+      required: [memory, reason, confidence]
+      properties:
+        memory: {$ref: "#/components/schemas/Memory"}
+        reason: {type: string}
+        confidence: {type: integer, minimum: 75, maximum: 100}
+    MemorySpaceSuggestion:
+      type: object
+      required: [space, reason, confidence]
+      properties:
+        space: {$ref: "#/components/schemas/Space"}
+        reason: {type: string}
+        confidence: {type: integer, minimum: 75, maximum: 100}
+    MemorySpaceSuggestions:
+      type: object
+      required: [suggestions]
+      properties:
+        suggestions: {type: array, items: {$ref: "#/components/schemas/MemorySpaceSuggestion"}}
+    SpaceMemories:
+      type: object
+      required: [memories, suggestions]
+      properties:
+        memories: {type: array, items: {$ref: "#/components/schemas/Memory"}}
+        suggestions: {type: array, items: {$ref: "#/components/schemas/SpaceMemorySuggestion"}}
+    SpaceProfileItem:
+      type: object
+      required: [id, kind, value, memory_id]
+      properties:
+        id: {type: string}
+        kind: {type: string}
+        value: {type: string}
+        memory_id: {type: integer}
+    SpaceProfile:
+      type: [object, "null"]
+      required: [last_interaction, items]
+      properties:
+        last_interaction: {type: [string, "null"], description: "Latest valid nonfuture event_date from confirmed members, original date/time preserved. Null if none; import/capture dates never imply an interaction."}
+        items: {type: array, items: {$ref: "#/components/schemas/SpaceProfileItem"}}
+    SpaceDetail:
+      type: object
+      required: [space, counts, upcoming, open_tasks, profile]
+      properties:
+        space: {$ref: "#/components/schemas/Space"}
+        counts:
+          type: object
+          required: [memories, upcoming, tasks]
+          properties:
+            memories: {type: integer}
+            upcoming: {type: integer}
+            tasks: {type: integer}
+        upcoming: {type: array, items: {$ref: "#/components/schemas/Memory"}}
+        open_tasks: {type: array, items: {$ref: "#/components/schemas/Memory"}}
+        profile: {$ref: "#/components/schemas/SpaceProfile"}
     MergeConnectionInput:
       type: object
       additionalProperties: false
@@ -589,6 +881,7 @@ components:
         language: {type: string, enum: [en, ar]}
         timezone: {type: string, minLength: 1, maxLength: 100, description: "Valid IANA timezone."}
         keep_recording: {type: boolean, default: false}
+        space_id: {type: string, format: uuid, description: Owned Space; capture and confirmed memberships commit atomically}
     VoiceCaptureResult:
       type: object
       required: [transcript, memories]
@@ -609,12 +902,14 @@ components:
       properties:
         transcript: {type: string, minLength: 1, maxLength: 100000}
         language: {type: string, enum: [en, ar]}
+        space_id: {type: string, format: uuid}
     BrainQuestion:
       type: object
       additionalProperties: false
       required: [question, language]
       properties:
         question: {type: string, minLength: 1, maxLength: 2000}
+        space_id: {type: string, format: uuid, description: Restrict semantic/exact retrieval and SQL totals to confirmed members; permitted confirmed one-hop connections may expand context}
         language: {type: string, enum: [en, ar]}
         timezone: {type: string, minLength: 1, maxLength: 100, default: UTC, description: "Validated IANA timezone for local calendar ranges; defaults to UTC for older clients."}
     BrainAnswer:
@@ -631,6 +926,10 @@ components:
         profile: {$ref: "#/components/schemas/BrainProfile"}
         memories: {type: array, items: {$ref: "#/components/schemas/Memory"}}
         uploads: {type: array, items: {$ref: "#/components/schemas/BrainUpload"}}
+        spaces: {type: array, items: {$ref: "#/components/schemas/Space"}}
+        space_memories: {type: array, items: {type: object, additionalProperties: true}}
+        space_suggestions: {type: array, items: {type: object, additionalProperties: true}}
+        space_profile_hidden: {type: array, items: {type: object, additionalProperties: true}}
     BrainProfile:
       type: object
       required: [id, email, name, language, theme, onboardingCompleted, createdAt, updatedAt]
@@ -772,6 +1071,7 @@ components:
       required: [raw_text]
       properties:
         raw_text: {type: string, maxLength: 100000}
+        space_id: {type: string, format: uuid}
         title: {type: string, maxLength: 200}
         file_path: {type: [string, "null"]}
         language: {type: string, enum: [en, ar]}

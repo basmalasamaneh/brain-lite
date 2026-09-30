@@ -1,5 +1,5 @@
 import { useRef, useState, type DragEvent } from 'react';
-import { Link, useLocation } from 'wouter';
+import { Link, useLocation, useSearch } from 'wouter';
 import { Camera, Check, FileText, ImageIcon, Loader2, Lock, PenLine, ShieldCheck, UploadCloud, X } from 'lucide-react';
 import { InfoTip } from '@/components/kit';
 import { IconCircle } from '@/components/brand';
@@ -14,6 +14,10 @@ import { cn } from '@/lib/utils';
 import { UnderstandingSkeleton } from '@/components/extraction';
 import { VoiceCapture } from '@/components/voice-capture';
 import { voiceText } from '@/lib/i18n-voice';
+import { useSpace } from '@/hooks/use-spaces';
+import { SpaceIcon } from '@/components/spaces';
+import { spaceText } from '@/lib/i18n-spaces';
+import { ErrorState, Skeleton } from '@/components/kit';
 
 function resolveType(f: File): string {
   if (f.type) return f.type === 'image/jpg' ? 'image/jpeg' : f.type;
@@ -35,6 +39,10 @@ export default function CapturePage() {
   const invalidate = useInvalidateMemories();
   const create = useCreateMemory();
   const requestUrl = useRequestUploadUrl();
+  const search = useSearch();
+  const spaceId = new URLSearchParams(search).get('space_id') || undefined;
+  const selectedSpace = useSpace(spaceId ?? '');
+  const spaceUnavailable = !!spaceId && !selectedSpace.data;
 
   const [title, setTitle] = useState('');
   const [text, setText] = useState('');
@@ -74,7 +82,7 @@ export default function CapturePage() {
   };
 
   const submit = async () => {
-    if (busy || inFlight.current) return;
+    if (busy || inFlight.current || spaceUnavailable) return;
     if (!isAuthenticated) { login(); return; }
     const raw = text.trim();
     if (!raw && !file) { setError('errNothing'); return; }
@@ -100,7 +108,8 @@ export default function CapturePage() {
     const finalTitle = (title.trim() || (raw ? raw.split('\n').find((l) => l.trim())!.trim() : titleFromFile(file!.name))).slice(0, 200);
     let timezone: string | undefined;
     try { timezone = Intl.DateTimeFormat().resolvedOptions().timeZone?.slice(0, 100) || undefined; } catch { timezone = undefined; }
-    create.mutate({ data: { raw_text: raw, title: finalTitle, file_path: filePath, language: lang, timezone } }, {
+    const data = { raw_text: raw, title: finalTitle, file_path: filePath, language: lang, timezone, ...(spaceId ? { space_id: spaceId } : {}) };
+    create.mutate({ data }, {
       onSuccess: (m) => {
         invalidate(m.id);
         uploaded.current = null;
@@ -125,6 +134,9 @@ export default function CapturePage() {
     <>
       <SampleBanner />
       <PageHeader eyebrow={t('captureEyebrow')} title={t('captureTitle')} lead={t('captureLead')} />
+      {spaceId && <div className="mb-5">
+        {selectedSpace.isLoading ? <Skeleton className="h-16 rounded-2xl" /> : selectedSpace.isError ? <ErrorState onRetry={() => selectedSpace.refetch()} /> : selectedSpace.data && <Surface className="flex items-center gap-3 border-gold-400/40 p-3" data-testid="badge-capture-space"><SpaceIcon space={selectedSpace.data.space} /><div className="min-w-0"><p className="text-xs text-muted-foreground">{spaceText(lang, 'storedIn')}</p><Link href={`/spaces/${spaceId}`} className="block truncate font-medium text-gold">{selectedSpace.data.space.name}</Link></div></Surface>}
+      </div>}
 
       <div className="rise grid grid-cols-4 gap-2 sm:gap-4" role="group" aria-label={t('captureTitle')}>
         {options.map(({ k, hint, icon, onClick, id }) => (
@@ -137,7 +149,7 @@ export default function CapturePage() {
             </span>
           </button>
         ))}
-        <VoiceCapture disabled={busy || authLoading} needsLogin={!authLoading && !isAuthenticated} onLogin={login} />
+        <VoiceCapture disabled={busy || authLoading || spaceUnavailable} needsLogin={!authLoading && !isAuthenticated} onLogin={login} spaceId={spaceId} spaceName={selectedSpace.data?.space.name} />
       </div>
       <p className="mb-6 mt-2 text-center text-xs leading-relaxed text-muted-foreground">{voiceText(lang, 'privacyDefault')}</p>
 
@@ -209,7 +221,7 @@ export default function CapturePage() {
             {!authLoading && !isAuthenticated ? (
               <button type="button" onClick={login} className={cn(btnPrimary, 'w-full py-3')} data-testid="button-login-save"><Lock className="h-4 w-4" />{t('loginToSave')}</button>
             ) : (
-              <button type="submit" disabled={busy || authLoading} className={cn(btnPrimary, 'w-full py-3')} data-testid="button-save">
+              <button type="submit" disabled={busy || authLoading || spaceUnavailable} className={cn(btnPrimary, 'w-full py-3')} data-testid="button-save">
                 {busy && phase !== 'saved' && <Loader2 className="h-4 w-4 animate-spin" />}
                 {phase === 'uploading' ? t('uploading') : phase === 'saving' ? t('understanding') : phase === 'saved' ? t('savedPlain') : t('save')}
               </button>

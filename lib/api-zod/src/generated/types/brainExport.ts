@@ -5,12 +5,20 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { BrainExportSpaceMemoriesItem } from './brainExportSpaceMemoriesItem';
+import type { BrainExportSpaceProfileHiddenItem } from './brainExportSpaceProfileHiddenItem';
+import type { BrainExportSpaceSuggestionsItem } from './brainExportSpaceSuggestionsItem';
 import type { BrainProfile } from './brainProfile';
 import type { BrainUpload } from './brainUpload';
 import type { Memory } from './memory';
+import type { Space } from './space';
 
 export interface BrainExport {
   profile: BrainProfile;
   memories: Memory[];
   uploads: BrainUpload[];
+  spaces?: Space[];
+  space_memories?: BrainExportSpaceMemoriesItem[];
+  space_suggestions?: BrainExportSpaceSuggestionsItem[];
+  space_profile_hidden?: BrainExportSpaceProfileHiddenItem[];
 }

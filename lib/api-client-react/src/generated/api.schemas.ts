@@ -5,14 +5,115 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-export interface MergeConnectionInput {
-  /** @minimum 1 */
-  keep_memory_id: number;
-  confirm: true;
+export type SpaceKind = typeof SpaceKind[keyof typeof SpaceKind];
+
+
+export const SpaceKind = {
+  project: 'project',
+  person: 'person',
+  trip: 'trip',
+  topic: 'topic',
+} as const;
+
+export type SpaceColor = typeof SpaceColor[keyof typeof SpaceColor];
+
+
+export const SpaceColor = {
+  gold: 'gold',
+  amber: 'amber',
+  bronze: 'bronze',
+  sand: 'sand',
+} as const;
+
+export type SpaceIcon = typeof SpaceIcon[keyof typeof SpaceIcon];
+
+
+export const SpaceIcon = {
+  briefcase: 'briefcase',
+  user: 'user',
+  plane: 'plane',
+  hash: 'hash',
+  heart: 'heart',
+  book: 'book',
+  sparkles: 'sparkles',
+  map: 'map',
+} as const;
+
+export interface SpaceInput {
+  kind: SpaceKind;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  name: string;
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  description?: string | null;
+  icon?: SpaceIcon;
+  color?: SpaceColor;
+  pinned?: boolean;
+  archived?: boolean;
 }
 
-export interface ConnectionSettingsInput {
-  automatic: boolean;
+export interface SpaceUpdate {
+  kind?: SpaceKind;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  name?: string;
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  description?: string | null;
+  icon?: SpaceIcon;
+  color?: SpaceColor;
+  pinned?: boolean;
+  archived?: boolean;
+}
+
+export interface Space {
+  id: string;
+  kind: SpaceKind;
+  name: string;
+  /** @nullable */
+  description: string | null;
+  icon: SpaceIcon;
+  color: SpaceColor;
+  pinned: boolean;
+  archived: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type SpaceWithCount = Space & {
+  memory_count: number;
+};
+
+export interface SpacesList {
+  spaces: SpaceWithCount[];
+}
+
+export interface SpaceResult {
+  space: Space;
+}
+
+export interface MemorySpaces {
+  spaces: Space[];
+}
+
+export interface SpaceCreationSuggestion {
+  id: string;
+  kind: SpaceKind;
+  name: string;
+  reason: string;
+}
+
+export interface SpaceCreationSuggestions {
+  suggestions: SpaceCreationSuggestion[];
 }
 
 export type MemoryType = typeof MemoryType[keyof typeof MemoryType];
@@ -88,6 +189,78 @@ export interface Memory {
   extraction_status?: MemoryExtractionStatus;
   /** @nullable */
   extraction_error?: MemoryExtractionError;
+}
+
+export interface SpaceMemorySuggestion {
+  memory: Memory;
+  reason: string;
+  /**
+     * @minimum 75
+     * @maximum 100
+     */
+  confidence: number;
+}
+
+export interface MemorySpaceSuggestion {
+  space: Space;
+  reason: string;
+  /**
+     * @minimum 75
+     * @maximum 100
+     */
+  confidence: number;
+}
+
+export interface MemorySpaceSuggestions {
+  suggestions: MemorySpaceSuggestion[];
+}
+
+export interface SpaceMemories {
+  memories: Memory[];
+  suggestions: SpaceMemorySuggestion[];
+}
+
+export interface SpaceProfileItem {
+  id: string;
+  kind: string;
+  value: string;
+  memory_id: number;
+}
+
+/**
+ * @nullable
+ */
+export type SpaceProfile = {
+  /**
+     * Latest valid nonfuture event_date from confirmed members, original date/time preserved. Null if none; import/capture dates never imply an interaction.
+     * @nullable
+     */
+  last_interaction: string | null;
+  items: SpaceProfileItem[];
+} | null;
+
+export type SpaceDetailCounts = {
+  memories: number;
+  upcoming: number;
+  tasks: number;
+};
+
+export interface SpaceDetail {
+  space: Space;
+  counts: SpaceDetailCounts;
+  upcoming: Memory[];
+  open_tasks: Memory[];
+  profile: SpaceProfile | null;
+}
+
+export interface MergeConnectionInput {
+  /** @minimum 1 */
+  keep_memory_id: number;
+  confirm: true;
+}
+
+export interface ConnectionSettingsInput {
+  automatic: boolean;
 }
 
 export type ConnectionSource = typeof ConnectionSource[keyof typeof ConnectionSource];
@@ -230,6 +403,8 @@ export interface VoiceCaptureInput {
      */
   timezone: string;
   keep_recording?: boolean;
+  /** Owned Space; capture and confirmed memberships commit atomically */
+  space_id?: string;
 }
 
 export interface VoiceCaptureResult {
@@ -260,6 +435,7 @@ export interface VoicePlainInput {
      */
   transcript: string;
   language: VoicePlainInputLanguage;
+  space_id?: string;
 }
 
 export type BrainQuestionLanguage = typeof BrainQuestionLanguage[keyof typeof BrainQuestionLanguage];
@@ -276,6 +452,8 @@ export interface BrainQuestion {
      * @maxLength 2000
      */
   question: string;
+  /** Restrict semantic/exact retrieval and SQL totals to confirmed members; permitted confirmed one-hop connections may expand context */
+  space_id?: string;
   language: BrainQuestionLanguage;
   /**
      * Validated IANA timezone for local calendar ranges; defaults to UTC for older clients.
@@ -290,6 +468,12 @@ export interface BrainAnswer {
   source_ids: number[];
   sources: AnswerSource[];
 }
+
+export type BrainExportSpaceMemoriesItem = { [key: string]: unknown };
+
+export type BrainExportSpaceSuggestionsItem = { [key: string]: unknown };
+
+export type BrainExportSpaceProfileHiddenItem = { [key: string]: unknown };
 
 export interface BrainProfile {
   id: string;
@@ -313,6 +497,10 @@ export interface BrainExport {
   profile: BrainProfile;
   memories: Memory[];
   uploads: BrainUpload[];
+  spaces?: Space[];
+  space_memories?: BrainExportSpaceMemoriesItem[];
+  space_suggestions?: BrainExportSpaceSuggestionsItem[];
+  space_profile_hidden?: BrainExportSpaceProfileHiddenItem[];
 }
 
 export type BrainDeletionConfirmation = typeof BrainDeletionConfirmation[keyof typeof BrainDeletionConfirmation];
@@ -492,6 +680,7 @@ export const MemoryInputLanguage = {
 export interface MemoryInput {
   /** @maxLength 100000 */
   raw_text: string;
+  space_id?: string;
   /** @maxLength 200 */
   title?: string;
   /** @nullable */
@@ -551,6 +740,31 @@ export interface MemoryStats {
 export interface HealthStatus {
   status: string;
 }
+
+export type ListSpacesParams = {
+archived?: boolean;
+};
+
+export type ListSpaceMemoriesParams = {
+filter?: ListSpaceMemoriesFilter;
+};
+
+export type ListSpaceMemoriesFilter = typeof ListSpaceMemoriesFilter[keyof typeof ListSpaceMemoriesFilter];
+
+
+export const ListSpaceMemoriesFilter = {
+  all: 'all',
+  events: 'events',
+  documents: 'documents',
+  tasks: 'tasks',
+  notes: 'notes',
+  links: 'links',
+} as const;
+
+export type AddSpaceMemoryBody = {
+  /** @minimum 1 */
+  memory_id: number;
+};
 
 export type MergeConnection200 = {
   memory: Memory;

@@ -8,6 +8,367 @@
 import * as zod from 'zod';
 
 
+export const ListSpacesQueryParams = zod.object({
+  "archived": zod.coerce.boolean().optional()
+})
+
+export const ListSpacesResponse = zod.object({
+  "spaces": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "kind": zod.enum(['project', 'person', 'trip', 'topic']),
+  "name": zod.string(),
+  "description": zod.string().nullable(),
+  "icon": zod.enum(['briefcase', 'user', 'plane', 'hash', 'heart', 'book', 'sparkles', 'map']),
+  "color": zod.enum(['gold', 'amber', 'bronze', 'sand']),
+  "pinned": zod.boolean(),
+  "archived": zod.boolean(),
+  "created_at": zod.string(),
+  "updated_at": zod.string()
+}).and(zod.object({
+  "memory_count": zod.number().int()
+})))
+})
+
+
+export const createSpaceBodyNameMax = 120;
+
+export const createSpaceBodyDescriptionMax = 2000;
+
+
+
+export const CreateSpaceBody = zod.object({
+  "kind": zod.enum(['project', 'person', 'trip', 'topic']),
+  "name": zod.string().min(1).max(createSpaceBodyNameMax),
+  "description": zod.string().max(createSpaceBodyDescriptionMax).nullish(),
+  "icon": zod.enum(['briefcase', 'user', 'plane', 'hash', 'heart', 'book', 'sparkles', 'map']).optional(),
+  "color": zod.enum(['gold', 'amber', 'bronze', 'sand']).optional(),
+  "pinned": zod.boolean().optional(),
+  "archived": zod.boolean().optional()
+})
+
+export const CreateSpaceResponse = zod.object({
+  "space": zod.object({
+  "id": zod.string().uuid(),
+  "kind": zod.enum(['project', 'person', 'trip', 'topic']),
+  "name": zod.string(),
+  "description": zod.string().nullable(),
+  "icon": zod.enum(['briefcase', 'user', 'plane', 'hash', 'heart', 'book', 'sparkles', 'map']),
+  "color": zod.enum(['gold', 'amber', 'bronze', 'sand']),
+  "pinned": zod.boolean(),
+  "archived": zod.boolean(),
+  "created_at": zod.string(),
+  "updated_at": zod.string()
+})
+})
+
+
+export const ListSpaceSuggestionsResponse = zod.object({
+  "suggestions": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "kind": zod.enum(['project', 'person', 'trip', 'topic']),
+  "name": zod.string(),
+  "reason": zod.string()
+}))
+})
+
+
+export const ConfirmSpaceSuggestionParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const ConfirmSpaceSuggestionResponse = zod.object({
+  "space": zod.object({
+  "id": zod.string().uuid(),
+  "kind": zod.enum(['project', 'person', 'trip', 'topic']),
+  "name": zod.string(),
+  "description": zod.string().nullable(),
+  "icon": zod.enum(['briefcase', 'user', 'plane', 'hash', 'heart', 'book', 'sparkles', 'map']),
+  "color": zod.enum(['gold', 'amber', 'bronze', 'sand']),
+  "pinned": zod.boolean(),
+  "archived": zod.boolean(),
+  "created_at": zod.string(),
+  "updated_at": zod.string()
+})
+})
+
+
+export const DismissSpaceSuggestionParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const DismissSpaceSuggestionResponse = zod.void()
+
+
+export const GetSpaceParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const GetSpaceResponse = zod.object({
+  "space": zod.object({
+  "id": zod.string().uuid(),
+  "kind": zod.enum(['project', 'person', 'trip', 'topic']),
+  "name": zod.string(),
+  "description": zod.string().nullable(),
+  "icon": zod.enum(['briefcase', 'user', 'plane', 'hash', 'heart', 'book', 'sparkles', 'map']),
+  "color": zod.enum(['gold', 'amber', 'bronze', 'sand']),
+  "pinned": zod.boolean(),
+  "archived": zod.boolean(),
+  "created_at": zod.string(),
+  "updated_at": zod.string()
+}),
+  "counts": zod.object({
+  "memories": zod.number().int(),
+  "upcoming": zod.number().int(),
+  "tasks": zod.number().int()
+}),
+  "upcoming": zod.array(zod.object({
+  "id": zod.number().int(),
+  "is_sample": zod.boolean(),
+  "type": zod.enum(['appointment', 'receipt', 'task', 'idea', 'document', 'note', 'other']),
+  "title": zod.string(),
+  "summary": zod.string().nullable(),
+  "raw_text": zod.string(),
+  "transcript": zod.string().nullable(),
+  "event_date": zod.string().nullable(),
+  "amount": zod.number().nullable(),
+  "currency": zod.string().nullable(),
+  "people": zod.array(zod.string()),
+  "tags": zod.array(zod.string()),
+  "confidence": zod.number().int(),
+  "status": zod.enum(['confirmed', 'needs_review']),
+  "file_path": zod.string().nullable(),
+  "created_at": zod.string(),
+  "extra": zod.record(zod.string(), zod.unknown()).optional(),
+  "extraction_status": zod.enum(['legacy', 'processing', 'extracted', 'fallback']).optional(),
+  "extraction_error": zod.union([zod.literal(null),zod.literal('not_configured'),zod.literal('unavailable'),zod.literal('invalid_response'),zod.literal('unsupported_file')]).nullish()
+})),
+  "open_tasks": zod.array(zod.object({
+  "id": zod.number().int(),
+  "is_sample": zod.boolean(),
+  "type": zod.enum(['appointment', 'receipt', 'task', 'idea', 'document', 'note', 'other']),
+  "title": zod.string(),
+  "summary": zod.string().nullable(),
+  "raw_text": zod.string(),
+  "transcript": zod.string().nullable(),
+  "event_date": zod.string().nullable(),
+  "amount": zod.number().nullable(),
+  "currency": zod.string().nullable(),
+  "people": zod.array(zod.string()),
+  "tags": zod.array(zod.string()),
+  "confidence": zod.number().int(),
+  "status": zod.enum(['confirmed', 'needs_review']),
+  "file_path": zod.string().nullable(),
+  "created_at": zod.string(),
+  "extra": zod.record(zod.string(), zod.unknown()).optional(),
+  "extraction_status": zod.enum(['legacy', 'processing', 'extracted', 'fallback']).optional(),
+  "extraction_error": zod.union([zod.literal(null),zod.literal('not_configured'),zod.literal('unavailable'),zod.literal('invalid_response'),zod.literal('unsupported_file')]).nullish()
+})),
+  "profile": zod.object({
+  "last_interaction": zod.string().nullable().describe('Latest valid nonfuture event_date from confirmed members, original date/time preserved. Null if none; import/capture dates never imply an interaction.'),
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "kind": zod.string(),
+  "value": zod.string(),
+  "memory_id": zod.number().int()
+}))
+}).nullable()
+})
+
+
+export const UpdateSpaceParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const updateSpaceBodyNameMax = 120;
+
+export const updateSpaceBodyDescriptionMax = 2000;
+
+
+
+export const UpdateSpaceBody = zod.object({
+  "kind": zod.enum(['project', 'person', 'trip', 'topic']).optional(),
+  "name": zod.string().min(1).max(updateSpaceBodyNameMax).optional(),
+  "description": zod.string().max(updateSpaceBodyDescriptionMax).nullish(),
+  "icon": zod.enum(['briefcase', 'user', 'plane', 'hash', 'heart', 'book', 'sparkles', 'map']).optional(),
+  "color": zod.enum(['gold', 'amber', 'bronze', 'sand']).optional(),
+  "pinned": zod.boolean().optional(),
+  "archived": zod.boolean().optional()
+})
+
+export const UpdateSpaceResponse = zod.object({
+  "space": zod.object({
+  "id": zod.string().uuid(),
+  "kind": zod.enum(['project', 'person', 'trip', 'topic']),
+  "name": zod.string(),
+  "description": zod.string().nullable(),
+  "icon": zod.enum(['briefcase', 'user', 'plane', 'hash', 'heart', 'book', 'sparkles', 'map']),
+  "color": zod.enum(['gold', 'amber', 'bronze', 'sand']),
+  "pinned": zod.boolean(),
+  "archived": zod.boolean(),
+  "created_at": zod.string(),
+  "updated_at": zod.string()
+})
+})
+
+
+export const DeleteSpaceParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const DeleteSpaceResponse = zod.void()
+
+
+export const ListSpaceMemoriesParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const ListSpaceMemoriesQueryParams = zod.object({
+  "filter": zod.enum(['all', 'events', 'documents', 'tasks', 'notes', 'links']).optional()
+})
+
+export const listSpaceMemoriesResponseSuggestionsItemConfidenceMin = 75;
+export const listSpaceMemoriesResponseSuggestionsItemConfidenceMax = 100;
+
+
+
+export const ListSpaceMemoriesResponse = zod.object({
+  "memories": zod.array(zod.object({
+  "id": zod.number().int(),
+  "is_sample": zod.boolean(),
+  "type": zod.enum(['appointment', 'receipt', 'task', 'idea', 'document', 'note', 'other']),
+  "title": zod.string(),
+  "summary": zod.string().nullable(),
+  "raw_text": zod.string(),
+  "transcript": zod.string().nullable(),
+  "event_date": zod.string().nullable(),
+  "amount": zod.number().nullable(),
+  "currency": zod.string().nullable(),
+  "people": zod.array(zod.string()),
+  "tags": zod.array(zod.string()),
+  "confidence": zod.number().int(),
+  "status": zod.enum(['confirmed', 'needs_review']),
+  "file_path": zod.string().nullable(),
+  "created_at": zod.string(),
+  "extra": zod.record(zod.string(), zod.unknown()).optional(),
+  "extraction_status": zod.enum(['legacy', 'processing', 'extracted', 'fallback']).optional(),
+  "extraction_error": zod.union([zod.literal(null),zod.literal('not_configured'),zod.literal('unavailable'),zod.literal('invalid_response'),zod.literal('unsupported_file')]).nullish()
+})),
+  "suggestions": zod.array(zod.object({
+  "memory": zod.object({
+  "id": zod.number().int(),
+  "is_sample": zod.boolean(),
+  "type": zod.enum(['appointment', 'receipt', 'task', 'idea', 'document', 'note', 'other']),
+  "title": zod.string(),
+  "summary": zod.string().nullable(),
+  "raw_text": zod.string(),
+  "transcript": zod.string().nullable(),
+  "event_date": zod.string().nullable(),
+  "amount": zod.number().nullable(),
+  "currency": zod.string().nullable(),
+  "people": zod.array(zod.string()),
+  "tags": zod.array(zod.string()),
+  "confidence": zod.number().int(),
+  "status": zod.enum(['confirmed', 'needs_review']),
+  "file_path": zod.string().nullable(),
+  "created_at": zod.string(),
+  "extra": zod.record(zod.string(), zod.unknown()).optional(),
+  "extraction_status": zod.enum(['legacy', 'processing', 'extracted', 'fallback']).optional(),
+  "extraction_error": zod.union([zod.literal(null),zod.literal('not_configured'),zod.literal('unavailable'),zod.literal('invalid_response'),zod.literal('unsupported_file')]).nullish()
+}),
+  "reason": zod.string(),
+  "confidence": zod.number().int().min(listSpaceMemoriesResponseSuggestionsItemConfidenceMin).max(listSpaceMemoriesResponseSuggestionsItemConfidenceMax)
+}))
+})
+
+
+export const AddSpaceMemoryParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+
+
+
+export const AddSpaceMemoryBody = zod.object({
+  "memory_id": zod.number().int().min(1)
+})
+
+export const AddSpaceMemoryResponse = zod.void()
+
+
+
+
+
+export const DismissSpaceMemoryParams = zod.object({
+  "id": zod.coerce.string().uuid(),
+  "memoryId": zod.coerce.number().int().min(1)
+})
+
+export const DismissSpaceMemoryResponse = zod.void()
+
+
+export const HideSpaceProfileItemParams = zod.object({
+  "id": zod.coerce.string().uuid(),
+  "itemId": zod.coerce.string()
+})
+
+export const HideSpaceProfileItemResponse = zod.void()
+
+
+
+
+
+export const ListMemorySpacesParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const ListMemorySpacesResponse = zod.object({
+  "spaces": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "kind": zod.enum(['project', 'person', 'trip', 'topic']),
+  "name": zod.string(),
+  "description": zod.string().nullable(),
+  "icon": zod.enum(['briefcase', 'user', 'plane', 'hash', 'heart', 'book', 'sparkles', 'map']),
+  "color": zod.enum(['gold', 'amber', 'bronze', 'sand']),
+  "pinned": zod.boolean(),
+  "archived": zod.boolean(),
+  "created_at": zod.string(),
+  "updated_at": zod.string()
+}))
+})
+
+
+
+
+
+export const ListMemorySpaceSuggestionsParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const listMemorySpaceSuggestionsResponseSuggestionsItemConfidenceMin = 75;
+export const listMemorySpaceSuggestionsResponseSuggestionsItemConfidenceMax = 100;
+
+
+
+export const ListMemorySpaceSuggestionsResponse = zod.object({
+  "suggestions": zod.array(zod.object({
+  "space": zod.object({
+  "id": zod.string().uuid(),
+  "kind": zod.enum(['project', 'person', 'trip', 'topic']),
+  "name": zod.string(),
+  "description": zod.string().nullable(),
+  "icon": zod.enum(['briefcase', 'user', 'plane', 'hash', 'heart', 'book', 'sparkles', 'map']),
+  "color": zod.enum(['gold', 'amber', 'bronze', 'sand']),
+  "pinned": zod.boolean(),
+  "archived": zod.boolean(),
+  "created_at": zod.string(),
+  "updated_at": zod.string()
+}),
+  "reason": zod.string(),
+  "confidence": zod.number().int().min(listMemorySpaceSuggestionsResponseSuggestionsItemConfidenceMin).max(listMemorySpaceSuggestionsResponseSuggestionsItemConfidenceMax)
+}))
+})
+
+
 export const getConnectionSuggestionsResponseSuggestionsItemConfidenceMin = 0;
 export const getConnectionSuggestionsResponseSuggestionsItemConfidenceMax = 100;
 
@@ -615,7 +976,8 @@ export const TranscribeVoiceBody = zod.object({
   "mime_type": zod.string().describe('audio/webm, audio/ogg, audio/mp4, audio/mpeg or audio/wav; optional codecs parameter.'),
   "language": zod.enum(['en', 'ar']),
   "timezone": zod.string().min(1).max(transcribeVoiceBodyTimezoneMax).describe('Valid IANA timezone.'),
-  "keep_recording": zod.boolean().default(transcribeVoiceBodyKeepRecordingDefault)
+  "keep_recording": zod.boolean().default(transcribeVoiceBodyKeepRecordingDefault),
+  "space_id": zod.string().uuid().optional().describe('Owned Space; capture and confirmed memberships commit atomically')
 })
 
 export const TranscribeVoiceResponse = zod.object({
@@ -638,7 +1000,8 @@ export const CaptureVoiceBody = zod.object({
   "mime_type": zod.string().describe('audio/webm, audio/ogg, audio/mp4, audio/mpeg or audio/wav; optional codecs parameter.'),
   "language": zod.enum(['en', 'ar']),
   "timezone": zod.string().min(1).max(captureVoiceBodyTimezoneMax).describe('Valid IANA timezone.'),
-  "keep_recording": zod.boolean().default(captureVoiceBodyKeepRecordingDefault)
+  "keep_recording": zod.boolean().default(captureVoiceBodyKeepRecordingDefault),
+  "space_id": zod.string().uuid().optional().describe('Owned Space; capture and confirmed memberships commit atomically')
 })
 
 
@@ -679,7 +1042,8 @@ export const saveVoicePlainNoteBodyTranscriptMax = 100000;
 
 export const SaveVoicePlainNoteBody = zod.object({
   "transcript": zod.string().min(1).max(saveVoicePlainNoteBodyTranscriptMax),
-  "language": zod.enum(['en', 'ar'])
+  "language": zod.enum(['en', 'ar']),
+  "space_id": zod.string().uuid().optional()
 })
 
 export const SaveVoicePlainNoteResponse = zod.object({
@@ -717,6 +1081,7 @@ export const askBrainBodyTimezoneMax = 100;
 
 export const AskBrainBody = zod.object({
   "question": zod.string().min(1).max(askBrainBodyQuestionMax),
+  "space_id": zod.string().uuid().optional().describe('Restrict semantic/exact retrieval and SQL totals to confirmed members; permitted confirmed one-hop connections may expand context'),
   "language": zod.enum(['en', 'ar']),
   "timezone": zod.string().min(1).max(askBrainBodyTimezoneMax).default(askBrainBodyTimezoneDefault).describe('Validated IANA timezone for local calendar ranges; defaults to UTC for older clients.')
 })
@@ -795,7 +1160,22 @@ export const ExportBrainDataResponse = zod.object({
   "name": zod.string(),
   "size": zod.number().int(),
   "contentType": zod.string()
-}))
+})),
+  "spaces": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "kind": zod.enum(['project', 'person', 'trip', 'topic']),
+  "name": zod.string(),
+  "description": zod.string().nullable(),
+  "icon": zod.enum(['briefcase', 'user', 'plane', 'hash', 'heart', 'book', 'sparkles', 'map']),
+  "color": zod.enum(['gold', 'amber', 'bronze', 'sand']),
+  "pinned": zod.boolean(),
+  "archived": zod.boolean(),
+  "created_at": zod.string(),
+  "updated_at": zod.string()
+})).optional(),
+  "space_memories": zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+  "space_suggestions": zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+  "space_profile_hidden": zod.array(zod.record(zod.string(), zod.unknown())).optional()
 })
 
 
@@ -858,6 +1238,7 @@ export const createMemoryBodyTimezoneMax = 100;
 
 export const CreateMemoryBody = zod.object({
   "raw_text": zod.string().max(createMemoryBodyRawTextMax),
+  "space_id": zod.string().uuid().optional(),
   "title": zod.string().max(createMemoryBodyTitleMax).optional(),
   "file_path": zod.string().nullish(),
   "language": zod.enum(['en', 'ar']).optional(),

@@ -39,7 +39,7 @@ export default function MemoriesPage() {
       <PageHeader eyebrow={t('memoriesEyebrow')} title={t('memoriesTitle')} lead={t('memoriesLead')}
         action={<Link href="/capture" className={cn(btnPrimary, 'hidden md:inline-flex')} data-testid="link-new-memory"><Plus className="h-4 w-4" />{t('captureSomething')}</Link>} />
 
-      <div className="rise smart-search sticky z-20 -mx-4 mb-6 space-y-3 bg-background/95 px-4 py-3 backdrop-blur md:mx-0 md:px-0" style={{ animationDelay: '60ms' }}>
+      <div className="rise smart-search sticky z-20 -mx-4 mb-6 min-w-0 space-y-3 bg-background/95 px-4 py-3 backdrop-blur md:mx-0 md:px-0" style={{ animationDelay: '60ms' }}>
         <form onSubmit={(e) => { e.preventDefault(); if (!invalidDates) { setSearch(q.trim()); setSubmitted(q.trim()); if (submitted === q.trim() && submitted) void related.refetch(); } }} className="relative flex h-12 w-full min-w-0 items-center rounded-xl border border-input bg-card focus-within:border-gold-500">
           <Search className="pointer-events-none absolute start-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input type="search" value={q} onChange={(e) => changeQuestion(e.target.value)} placeholder={t('searchPlaceholder')} className="h-full min-w-0 flex-1 rounded-xl bg-transparent ps-10 pe-1 text-sm outline-none" data-testid="input-search" enterKeyHint="search" />
@@ -74,7 +74,7 @@ export default function MemoriesPage() {
           filtered
             ? <EmptyState title={t('noResults')} body={t('noResultsBody')} />
             : <EmptyState title={t('emptyTitle')} body={t('emptyBody')} action={<Link href="/capture" className={btnPrimary} data-testid="link-empty-capture"><Plus className="h-4 w-4" />{t('captureSomething')}</Link>} />
-        ) : <div className="space-y-3" data-testid="list-memories">{list.data!.map((m, i) => <MemoryCard key={m.id} memory={m} index={i} />)}</div>)}
+        ) : <div className="min-w-0 space-y-3" data-testid="list-memories">{list.data!.map((m, i) => <MemoryCard key={m.id} memory={m} index={i} />)}</div>)}
       {submitted && !invalidDates && <section className="mt-8" data-testid="section-related">
         <h2 className="mb-3 font-display text-2xl">{searchText(lang, 'related')}</h2>
         {related.isError ? <ErrorState onRetry={() => related.refetch()} />

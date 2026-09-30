@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'wouter';
 import { motion, useReducedMotion } from 'framer-motion';
-import { Home, Languages, Library, Loader2, LogOut, MessageCircleQuestion, Monitor, Moon, Plus, Settings, Sun } from 'lucide-react';
+import { Home, Languages, Library, Loader2, LogOut, MessageCircleQuestion, Monitor, Moon, Plus, Settings, Sun, Layers } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useI18n, type TKey } from '@/lib/i18n';
 import { useTheme, type ThemeChoice } from '@/lib/theme';
@@ -12,13 +12,15 @@ import { PageTransition } from '@/components/motion';
 import { cn } from '@/lib/utils';
 import { InstallPrompt } from '@/components/install-prompt';
 import { useMobileKeyboard } from '@/hooks/use-mobile-keyboard';
+import { spaceText } from '@/lib/i18n-spaces';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 const nav: { href: string; key: TKey; icon: typeof Home }[] = [
   { href: '/', key: 'navHome', icon: Home },
   { href: '/memories', key: 'navMemories', icon: Library },
   { href: '/capture', key: 'navCapture', icon: Plus },
   { href: '/ask', key: 'navAsk', icon: MessageCircleQuestion },
-  { href: '/settings', key: 'navSettings', icon: Settings },
+  { href: '/spaces', key: 'navSpaces', icon: Layers },
 ];
 
 function isActive(loc: string, href: string) {
@@ -71,8 +73,8 @@ export function LangSwitch({ compact }: { compact?: boolean }) {
   return (
     <button onClick={() => setLang(lang === 'en' ? 'ar' : 'en')} aria-label={t('language')} data-testid="button-language"
       className={cn('flex min-h-11 items-center gap-2 rounded-xl text-sm font-medium transition hover:bg-gold-soft hover:text-gold active:scale-95',
-        compact ? 'px-3' : 'w-full border border-border px-3')}>
-      <Languages className="h-4 w-4" strokeWidth={1.75} />
+        compact ? 'shrink-0 px-2 sm:px-3' : 'w-full border border-border px-3')}>
+      <Languages className={cn('h-4 w-4 shrink-0', compact && 'max-[400px]:hidden')} strokeWidth={1.75} />
       <span dir="ltr"><span className={lang === 'en' ? 'font-bold text-gold underline underline-offset-4' : 'text-muted-foreground'}>EN</span><span aria-hidden="true"> / </span><span className={lang === 'ar' ? 'font-bold text-gold underline underline-offset-4' : 'text-muted-foreground'}>AR</span></span>
     </button>
   );
@@ -110,6 +112,27 @@ function Logo() {
   return <Link href="/" className="rounded-xl" data-testid="link-logo" aria-label={t('appName')}><Wordmark name={t('appName')} /></Link>;
 }
 
+function AccountMenu() {
+  const { user, logout } = useAuth();
+  const { t, lang } = useI18n();
+  const [, navigate] = useLocation();
+  const { toast } = useToast();
+  const [busy, setBusy] = useState(false);
+  if (!user) return null;
+  return <DropdownMenu dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+    <DropdownMenuTrigger asChild><button aria-label={spaceText(lang, 'account')} data-testid="button-account-menu" className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-gold-400/40 bg-gold-soft text-gold"><span className="font-display text-lg">{(user.name || user.email).charAt(0).toUpperCase()}</span></button></DropdownMenuTrigger>
+    <DropdownMenuContent align="end" className="w-56 rounded-2xl border-gold-400/40 p-2">
+      <DropdownMenuLabel className="truncate">{user.name || user.email}</DropdownMenuLabel><DropdownMenuSeparator />
+      <DropdownMenuItem onSelect={() => navigate('/settings')} className="min-h-11 gap-2 rounded-xl" data-testid="menu-settings"><Settings className="h-4 w-4" />{t('navSettings')}</DropdownMenuItem>
+      <DropdownMenuItem disabled={busy} onSelect={async () => {
+        setBusy(true);
+        try { await logout(); navigate('/login', { replace: true }); }
+        catch { toast({ variant: 'destructive', title: t('logoutFail') }); setBusy(false); }
+      }} className="min-h-11 gap-2 rounded-xl"><LogOut className="h-4 w-4" />{t('logout')}</DropdownMenuItem>
+    </DropdownMenuContent>
+  </DropdownMenu>;
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
   useMobileKeyboard();
   const [loc] = useLocation();
@@ -120,7 +143,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="min-h-[100dvh]">
       <aside className="fixed inset-y-0 start-0 z-30 hidden w-72 flex-col border-e border-sidebar-border bg-sidebar/90 p-6 backdrop-blur md:flex">
         <div className="pattern-star pointer-events-none absolute inset-x-0 top-0 h-48 [mask-image:linear-gradient(to_bottom,black,transparent)]" aria-hidden />
-        <div className="relative"><Logo /></div>
+        <div className="relative flex items-center justify-between gap-2"><Logo /><AccountMenu /></div>
         <p className="relative mt-3 text-xs text-muted-foreground">{t('tagline')}</p>
         <nav className="relative mt-10 flex flex-col gap-1" aria-label={t('mainNav')}>
           {nav.map(({ href, key, icon: Icon }) => {
@@ -149,6 +172,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="flex items-center">
           <LangSwitch compact />
           <ThemeCycle />
+          <AccountMenu />
         </div>
       </header>
 

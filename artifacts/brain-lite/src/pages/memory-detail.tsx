@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { voiceText } from '@/lib/i18n-voice';
 import { SimilarMemories } from '@/components/semantic-memories';
 import { MemoryConnections } from '@/components/connections';
+import { MemorySpaces } from '@/components/spaces';
 
 type Draft = { title: string; raw_text: string; transcript: string; summary: string; type: MemoryType; status: MemoryStatus; date: string; time: string; amount: string; currency: string; people: string; tags: string; extra: string };
 
@@ -196,6 +197,7 @@ export default function MemoryDetailPage() {
         </form>
       ) : (
         <div className="space-y-5">
+        {isAuthenticated && <MemorySpaces key={`spaces-${id}`} id={id} />}
         <ExtractionBanner m={m} canEdit={isAuthenticated} confirming={update.isPending}
           onConfirm={() => send({ status: 'confirmed' })} onChange={() => { setDraft(toDraft(m)); setErrors({}); }} />
         <div className="grid gap-5 lg:grid-cols-[1fr_18rem]">

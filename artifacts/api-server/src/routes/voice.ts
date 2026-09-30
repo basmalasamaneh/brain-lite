@@ -7,6 +7,8 @@ import { activeCaptures, deletingUsers } from "../lib/brain-state";
 import { validEventDate } from "../lib/calendar";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { cleanupReservedVoiceUpload, decodeAudio, MAX_VOICE_BYTES, plainBody, transcribeAudio, understandVoice, validateAudioDuration, VoiceError, voiceBody } from "../lib/voice-capture";
+import { confirmCaptured, requireSpace } from "../lib/spaces";
+import { ConnectionError } from "../lib/connections";
 
 const router: IRouter = Router();
 const storage = new ObjectStorageService();
@@ -57,6 +59,13 @@ router.post("/capture/voice", voiceLimiter, async (req, res): Promise<void> => {
     const oversized = typeof req.body?.audio_base64 === "string" && req.body.audio_base64.length > Math.ceil(MAX_VOICE_BYTES / 3) * 4;
     res.status(oversized ? 413 : 400).json({ error: oversized ? "Recording must be 5 MB or smaller." : "Invalid recording or audio details.", code: oversized ? "audio_too_large" : "invalid_input" }); return;
   }
+  if (parsed.data.space_id) {
+    try { await requireSpace(userId, parsed.data.space_id); }
+    catch (error) {
+      if (error instanceof ConnectionError) { res.status(error.status).json({ error: error.message }); return; }
+      throw error;
+    }
+  }
   activeCaptures.add(userId);
   let transcript: string | undefined;
   let objectPath: string | undefined;
@@ -91,7 +100,7 @@ router.post("/capture/voice", voiceLimiter, async (req, res): Promise<void> => {
       uploadConfirmed = true;
     }
     const rows = await db.transaction(async (tx) => {
-      return tx.insert(memoriesTable).values(result.items.map((item) => {
+      const created = await tx.insert(memoriesTable).values(result.items.map((item) => {
         const specific = item.transcript?.trim();
         // Keep each item's exact spoken words only if present verbatim in the complete transcript.
         const raw = specific && transcript!.includes(specific) ? specific : transcript!;
@@ -104,6 +113,8 @@ router.post("/capture/voice", voiceLimiter, async (req, res): Promise<void> => {
           status: "needs_review" as const, extraction_status: "extracted" as const,
         };
       })).returning();
+      await confirmCaptured(tx, userId, parsed.data.space_id, created.map((row) => row.id));
+      return created;
     });
     committed = true;
     res.status(201).json({ transcript, memories: rows.map(serialize) });
@@ -120,7 +131,9 @@ router.post("/capture/voice", voiceLimiter, async (req, res): Promise<void> => {
       // Even a successful deletion after a timed-out PUT might precede a late
       // remote commit. Preserve the row for later account/data cleanup.
     }
-    if (error instanceof VoiceError) {
+    if (error instanceof ConnectionError) {
+      res.status(error.status).json({ error: error.message });
+    } else if (error instanceof VoiceError) {
       res.status(error.status).json({ error: error.message, code: error.code, ...(error.transcript ? { transcript: error.transcript } : {}) });
     } else {
       req.log.error({ errorName: error instanceof Error ? error.name : "Error" }, "Voice capture failed");
@@ -138,17 +151,29 @@ router.post("/capture/voice/plain", async (req, res): Promise<void> => {
   if (deletingUsers.has(userId)) { res.status(409).json({ error: "Personal data deletion is in progress." }); return; }
   const parsed = plainBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Enter the words you want to save as a note." }); return; }
+  if (parsed.data.space_id) {
+    try { await requireSpace(userId, parsed.data.space_id); }
+    catch (error) {
+      if (error instanceof ConnectionError) { res.status(error.status).json({ error: error.message }); return; }
+      throw error;
+    }
+  }
   if (activeCaptures.has(userId)) { res.status(409).json({ error: "A capture is processing. Please wait." }); return; }
   activeCaptures.add(userId);
   try {
     const transcript = parsed.data.transcript.trim();
-    const [row] = await db.insert(memoriesTable).values({
+    const row = await db.transaction(async (tx) => {
+    const [created] = await tx.insert(memoriesTable).values({
       userId, title: transcript.split("\n")[0].slice(0, 100), type: "note",
       raw_text: transcript, transcript, confidence: 0, status: "needs_review",
       extraction_status: "fallback", extraction_error: "unavailable",
     }).returning();
+    await confirmCaptured(tx, userId, parsed.data.space_id, [created.id]);
+    return created;
+    });
     res.status(201).json(serialize(row));
-  } catch {
+  } catch (error) {
+    if (error instanceof ConnectionError) { res.status(error.status).json({ error: error.message }); return; }
     res.status(503).json({ error: "Unable to save your note. Please try again." });
   } finally { activeCaptures.delete(userId); }
 });

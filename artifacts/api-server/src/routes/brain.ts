@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { and, eq, inArray } from "drizzle-orm";
-import { db, memoriesTable, uploadsTable, usersTable } from "@workspace/db";
+import { and, eq, inArray, sql } from "drizzle-orm";
+import { db, pool, memoriesTable, uploadsTable, usersTable, spacesTable } from "@workspace/db";
 import { AskBrainBody, AskBrainResponse, DeleteBrainDataBody, DeleteBrainDataResponse, ExportBrainDataResponse } from "@workspace/api-zod";
 import { ObjectNotFoundError, ObjectStorageService } from "../lib/objectStorage";
 import { activeCaptures, activeQuestions as activeUserQuestions, activeUploadRequests, deletingUsers } from "../lib/brain-state";
@@ -8,6 +8,9 @@ import rateLimit from "express-rate-limit";
 import { publicMemory, retrieveForQuestion } from "../lib/semantic-search";
 import { validTimezone } from "../lib/semantic-utils";
 import { confirmedOneHop } from "../lib/connections";
+import { ConnectionError } from "../lib/connections";
+import { requireSpace, serializeSpace } from "../lib/spaces";
+import { spaceIdBody } from "../lib/spaces-utils";
 import {
   generateGroundedAnswer, noDataAnswer, parseGroundedAnswer, prepareContext,
   type CompactMemory,
@@ -35,7 +38,7 @@ function serializeMemory(row: typeof memoriesTable.$inferSelect) {
 }
 
 router.post("/brain/ask", askLimiter, async (req, res): Promise<void> => {
-  const parsed = AskBrainBody.safeParse(req.body);
+  const parsed = AskBrainBody.extend({ space_id: spaceIdBody }).safeParse(req.body);
   if (!parsed.success || !parsed.data.question.trim() || !validTimezone(parsed.data.timezone ?? "UTC")) {
     res.status(400).json({ error: "A valid question and language are required" });
     return;
@@ -44,6 +47,13 @@ router.post("/brain/ask", askLimiter, async (req, res): Promise<void> => {
     res.status(409).json({ error: "Personal data deletion is in progress" });
     return;
   }
+  if (parsed.data.space_id) {
+    try { await requireSpace(req.user!.id, parsed.data.space_id); }
+    catch (error) {
+      if (error instanceof ConnectionError) { res.status(error.status).json({ error: error.message }); return; }
+      throw error;
+    }
+  }
   if (activeQuestions >= MAX_CONCURRENT_QUESTIONS) {
     res.status(503).json({ error: "Too many questions in progress. Please retry shortly." });
     return;
@@ -51,8 +61,8 @@ router.post("/brain/ask", askLimiter, async (req, res): Promise<void> => {
   activeQuestions++;
   activeUserQuestions.set(req.user!.id, (activeUserQuestions.get(req.user!.id) ?? 0) + 1);
   try {
-    const { question, language, timezone = "UTC" } = parsed.data;
-    const retrieved = await retrieveForQuestion(req.user!.id, question, timezone);
+    const { question, language, timezone = "UTC", space_id } = parsed.data;
+    const retrieved = await retrieveForQuestion(req.user!.id, question, timezone, space_id);
     const aggregate = retrieved.aggregate;
     const connected = await confirmedOneHop(req.user!.id, retrieved.related.map(({ memory }) => memory.id));
     const related = [...retrieved.related, ...connected.map((memory) => ({ memory, relevance: 0 }))];
@@ -117,10 +127,14 @@ router.get("/brain/export", async (req, res): Promise<void> => {
   }
   try {
     const userId = req.user!.id;
-    const [[profile], memories, uploads] = await Promise.all([
+    const [[profile], memories, uploads, spaces, memberships, creationSuggestions, hiddenProfileItems] = await Promise.all([
       db.select().from(usersTable).where(eq(usersTable.id, userId)),
       db.select().from(memoriesTable).where(eq(memoriesTable.userId, userId)),
       db.select().from(uploadsTable).where(eq(uploadsTable.userId, userId)),
+      db.select().from(spacesTable).where(eq(spacesTable.userId, userId)),
+      pool.query("SELECT space_id,memory_id,source,status,reason,confidence FROM space_memories WHERE user_id=$1", [userId]),
+      pool.query("SELECT id,kind,name,reason,status,space_id FROM space_creation_suggestions WHERE user_id=$1", [userId]),
+      pool.query("SELECT space_id,item_id FROM space_profile_hidden WHERE user_id=$1", [userId]),
     ]);
     if (!profile) { res.status(503).json({ error: "Profile unavailable" }); return; }
     const payload = ExportBrainDataResponse.parse({
@@ -133,7 +147,8 @@ router.get("/brain/export", async (req, res): Promise<void> => {
       uploads: uploads.map(({ path, name, size, contentType }) => ({ path, name, size, contentType })),
     });
     res.setHeader("Content-Disposition", 'attachment; filename="brain-lite-data.json"');
-    res.json(payload);
+    res.json({ ...payload, spaces: spaces.map(serializeSpace), space_memories: memberships.rows,
+      space_suggestions: creationSuggestions.rows, space_profile_hidden: hiddenProfileItems.rows });
   } catch (error) {
     req.log.error({ errorName: error instanceof Error ? error.name : "Error" }, "Personal data export failed");
     res.status(503).json({ error: "Unable to export personal data. Please retry." });
@@ -165,11 +180,13 @@ router.delete("/brain/data", async (req, res): Promise<void> => {
       }
     }
     await db.transaction(async (tx) => {
+      await tx.delete(spacesTable).where(eq(spacesTable.userId, userId));
+      await tx.execute(sql`DELETE FROM space_creation_suggestions WHERE user_id=${userId}`);
       await tx.delete(memoriesTable).where(eq(memoriesTable.userId, userId));
       await tx.delete(uploadsTable).where(eq(uploadsTable.userId, userId));
     });
     res.json(DeleteBrainDataResponse.parse({
-      deleted: true, scope: "Your memories and owned uploads/files were deleted. Your account and login remain active.",
+      deleted: true, scope: "Your memories, Spaces, suggestions, profiles and owned uploads/files were deleted. Your account and login remain active.",
     }));
   } catch (error) {
     req.log.error({ errorName: error instanceof Error ? error.name : "Error" }, "Personal data deletion partially failed");
