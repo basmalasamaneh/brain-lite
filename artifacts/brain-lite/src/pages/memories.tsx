@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'wouter';
-import { Layers3, Plus, Search, SlidersHorizontal, X } from 'lucide-react';
+import { ChevronDown, Layers3, Plus, Search, SlidersHorizontal, X } from 'lucide-react';
 import { useListMemories, getListMemoriesQueryKey } from '@workspace/api-client-react';
 import { useI18n, usePageTitle, type TKey } from '@/lib/i18n';
 import { MEMORY_TYPES, typeMeta } from '@/lib/memory';
@@ -10,6 +10,7 @@ import { VoiceQuestion } from '@/components/voice-question';
 import { RelatedResults } from '@/components/semantic-memories';
 import { useRelatedMemories, type SearchFilters } from '@/hooks/use-semantic-search';
 import { searchText } from '@/lib/i18n-search';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 export default function MemoriesPage() {
   const { t, lang } = useI18n();
@@ -20,6 +21,8 @@ export default function MemoriesPage() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [submitted, setSubmitted] = useState('');
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const activeFilters = Number(!!type) + Number(!!dateFrom) + Number(!!dateTo);
   const invalidDates = !!(dateFrom && dateTo && dateFrom > dateTo);
   useEffect(() => { const id = setTimeout(() => setSearch(q.trim()), 400); return () => clearTimeout(id); }, [q]);
 
@@ -47,12 +50,24 @@ export default function MemoriesPage() {
           <VoiceQuestion onTranscript={changeQuestion} testId="button-search-mic" />
           <button type="submit" disabled={!q.trim() || invalidDates} aria-label={searchText(lang, 'submit')} data-testid="button-search-submit" className="me-1 grid h-11 w-11 shrink-0 place-items-center rounded-xl text-gold hover:bg-gold-soft disabled:opacity-40"><Search className="h-4 w-4" /></button>
         </form>
-        <div className="overflow-hidden rounded-2xl border border-gold-400/25 bg-card soft-shadow">
+        <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
+          <PopoverTrigger asChild>
+            <button type="button" data-testid="button-toggle-filters" className={cn('inline-flex min-h-11 items-center gap-2 rounded-xl border px-3.5 text-sm font-medium transition hover:bg-gold-soft', activeFilters ? 'border-gold-400/60 bg-gold-soft text-gold' : 'border-input bg-card text-muted-foreground', invalidDates && 'border-destructive text-danger-ink')}>
+              <SlidersHorizontal className="h-4 w-4" aria-hidden />
+              {lang === 'ar' ? 'الفلاتر' : 'Filters'}
+              {activeFilters > 0 && <span className="grid h-5 min-w-5 place-items-center rounded-full bg-gold/10 px-1 text-xs">{activeFilters}</span>}
+              <ChevronDown className={cn('h-4 w-4 transition-transform', filtersOpen && 'rotate-180')} aria-hidden />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align={lang === 'ar' ? 'end' : 'start'} sideOffset={8} collisionPadding={16} dir={lang === 'ar' ? 'rtl' : 'ltr'}
+            aria-label={lang === 'ar' ? 'فلاتر الذكريات' : 'Memory filters'}
+            className="w-[min(380px,calc(100vw-2rem))] max-h-[min(70dvh,var(--radix-popover-content-available-height))] overflow-y-auto overscroll-contain rounded-2xl border-gold-400/30 bg-card p-0 shadow-xl"
+            data-testid="panel-memory-filters">
         <div className="flex min-h-12 items-center justify-between gap-2 px-3 sm:px-4">
           <span className="flex items-center gap-2 text-xs font-semibold text-muted-foreground"><SlidersHorizontal className="h-3.5 w-3.5 text-gold" aria-hidden />{lang === 'ar' ? 'الفلاتر' : 'Filters'}</span>
           {filtered && <button type="button" onClick={clear} className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-gold transition hover:bg-gold-soft" data-testid="button-clear-filters"><X className="h-3.5 w-3.5" />{t('clearFilters')}</button>}
         </div>
-        <div className="grid grid-cols-4 gap-1.5 px-3 pb-3 sm:gap-2 sm:px-4 lg:grid-cols-8">
+        <div className="grid grid-cols-4 gap-1.5 px-3 pb-3 sm:gap-2 sm:px-4">
           <button onClick={() => setType('')} aria-pressed={!type} className={cn('flex min-h-16 min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl border px-1 py-2 text-[11px] font-medium leading-tight transition active:scale-95 sm:text-xs', !type ? 'border-gold-400/60 bg-gold-soft text-gold shadow-sm' : 'border-transparent bg-muted/40 text-muted-foreground hover:border-gold-400/30 hover:bg-gold-soft/50 hover:text-foreground')} data-testid="filter-all"><Layers3 className="h-4 w-4" strokeWidth={1.5} aria-hidden />{t('all')}</button>
           {MEMORY_TYPES.map((ty) => {
             const Icon = typeMeta[ty].icon;
@@ -65,12 +80,16 @@ export default function MemoriesPage() {
             );
           })}
         </div>
-        <div className="grid min-w-0 grid-cols-2 gap-3 border-t border-gold-400/15 bg-background/50 p-3 sm:px-4">
-          <label className="min-w-0 text-[11px] font-medium text-muted-foreground">{searchText(lang, 'from')}<input type="date" value={dateFrom} max={dateTo || undefined} onChange={(e) => setDateFrom(e.target.value)} className={cn(fieldCls, 'mt-1.5 min-h-11 min-w-0 max-w-full bg-card text-sm')} data-testid="input-search-date-from" /></label>
-          <label className="min-w-0 text-[11px] font-medium text-muted-foreground">{searchText(lang, 'to')}<input type="date" value={dateTo} min={dateFrom || undefined} onChange={(e) => setDateTo(e.target.value)} className={cn(fieldCls, 'mt-1.5 min-h-11 min-w-0 max-w-full bg-card text-sm')} data-testid="input-search-date-to" /></label>
+        <div className="grid min-w-0 gap-3 border-t border-gold-400/15 bg-background/50 p-3 sm:px-4">
+          <label className="block min-w-0 text-xs font-medium text-muted-foreground">{searchText(lang, 'from')}<input type="date" value={dateFrom} max={dateTo || undefined} onChange={(e) => setDateFrom(e.target.value)} dir="ltr" aria-invalid={invalidDates} aria-describedby={invalidDates ? 'search-date-error' : undefined} className={cn(fieldCls, 'mt-1.5 block h-12 w-full min-w-0 max-w-full appearance-none bg-card px-3 text-base [color-scheme:light] [&::-webkit-date-and-time-value]:text-start [&::-webkit-datetime-edit]:min-w-0')} data-testid="input-search-date-from" /></label>
+          <label className="block min-w-0 text-xs font-medium text-muted-foreground">{searchText(lang, 'to')}<input type="date" value={dateTo} min={dateFrom || undefined} onChange={(e) => setDateTo(e.target.value)} dir="ltr" aria-invalid={invalidDates} aria-describedby={invalidDates ? 'search-date-error' : undefined} className={cn(fieldCls, 'mt-1.5 block h-12 w-full min-w-0 max-w-full appearance-none bg-card px-3 text-base [color-scheme:light] [&::-webkit-date-and-time-value]:text-start [&::-webkit-datetime-edit]:min-w-0')} data-testid="input-search-date-to" /></label>
+          {invalidDates && <p id="search-date-error" role="alert" className="text-sm text-danger-ink" data-testid="error-search-dates">{searchText(lang, 'dateError')}</p>}
         </div>
+        <div className="sticky bottom-0 border-t border-border bg-card p-3">
+          <button type="button" onClick={() => setFiltersOpen(false)} className={cn(btnPrimary, 'min-h-11 w-full')} data-testid="button-close-filters">{lang === 'ar' ? 'تم' : 'Done'}</button>
         </div>
-        {invalidDates && <p role="alert" className="text-sm text-danger-ink" data-testid="error-search-dates">{searchText(lang, 'dateError')}</p>}
+          </PopoverContent>
+        </Popover>
       </div>
 
       {submitted && <h2 className="mb-3 font-display text-2xl">{searchText(lang, 'keyword')}</h2>}
