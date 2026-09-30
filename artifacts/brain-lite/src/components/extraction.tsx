@@ -1,8 +1,7 @@
 import { Fragment } from 'react';
-import { AlertTriangle, CalendarPlus, Check, History, Loader2, Pencil, Sparkles } from 'lucide-react';
+import { AlertTriangle, Check, History, Loader2, Pencil, Sparkles } from 'lucide-react';
 import type { Memory } from '@workspace/api-client-react';
 import { useI18n, type TKey } from '@/lib/i18n';
-import { calendarUrl } from '@/lib/memory';
 import { InfoTip, Skeleton, Surface, btnGhost, btnPrimary } from '@/components/kit';
 import { CornerFlourishes } from '@/components/brand';
 import { MeterFill, PulseStar } from '@/components/motion';
@@ -140,12 +139,3 @@ export function ConfirmChange({ onConfirm, onChange, confirming, id = '' }: { on
   );
 }
 
-export function CalendarLink({ m, className }: { m: Memory; className?: string }) {
-  const { t } = useI18n();
-  if (m.type !== 'appointment' || !m.event_date) return null;
-  return (
-    <a href={calendarUrl(m.id)} download={`memory-${m.id}.ics`} className={cn(btnGhost, 'w-full', className)} data-testid="link-calendar">
-      <CalendarPlus className="h-4 w-4" />{t('addToCalendar')}
-    </a>
-  );
-}

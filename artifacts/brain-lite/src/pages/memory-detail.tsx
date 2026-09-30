@@ -5,7 +5,7 @@ import { useAuth } from '@workspace/replit-auth-web';
 import { getGetMemoryQueryKey, useDeleteMemory, useGetMemory, useUpdateMemory, type Memory, type MemoryStatus, type MemoryType, type MemoryUpdate } from '@workspace/api-client-react';
 import { useI18n, usePageTitle, type TKey } from '@/lib/i18n';
 import { MEMORY_TYPES, fileUrl, formatAmount, formatDate, formatDateTime, useInvalidateMemories } from '@/lib/memory';
-import { CalendarLink, ExtractionBanner, ExtraSummary } from '@/components/extraction';
+import { ExtractionBanner, ExtraSummary } from '@/components/extraction';
 import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { EmptyState, ErrorState, SampleBanner, StatusPill, Surface, TypeChip, btnDanger, btnGhost, btnPrimary, fieldCls , Skeleton } from '@/components/kit';
@@ -236,7 +236,6 @@ export default function MemoryDetailPage() {
               <div className="py-3 text-xs text-muted-foreground tabular-nums">{t('created')} {formatDate(m.created_at, lang)}</div>
             </Surface>
 
-            <CalendarLink m={m} />
             <GoogleCalendarButton memory={m} />
             {isAuthenticated && <MemoryReminderControl key={`reminders-${id}`} id={id} />}
             {isAuthenticated ? (

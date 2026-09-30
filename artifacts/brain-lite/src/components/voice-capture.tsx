@@ -8,7 +8,8 @@ import { voiceText, type VoiceKey } from '@/lib/i18n-voice';
 import { useVoiceRecorder, voiceUploadIssue } from '@/hooks/use-voice-recorder';
 import { useInvalidateMemories, formatDateTime } from '@/lib/memory';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { CalendarLink, ConfidenceMeter } from '@/components/extraction';
+import { ConfidenceMeter } from '@/components/extraction';
+import { GoogleCalendarButton } from '@/components/google-calendar';
 import { PulseStar } from '@/components/motion';
 import { TypeChip, btnGhost, btnPrimary, fieldCls } from '@/components/kit';
 import { cn } from '@/lib/utils';
@@ -202,7 +203,7 @@ export function VoiceCapture({ disabled = false, needsLogin = false, onLogin, sp
                   <h3 className="break-words font-display text-xl">{m.title}</h3>
                   {m.summary && <p className="break-words text-sm text-muted-foreground">{m.summary}</p>}
                   <ConfidenceMeter value={m.confidence} />
-                  <CalendarLink m={m} />
+                  <GoogleCalendarButton memory={m} />
                   <div className="flex flex-wrap gap-2">
                     {m.status !== 'confirmed' && <button type="button" onClick={() => confirmOne(m)} disabled={confirming !== null} className={btnPrimary}>{confirming === m.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}{v('confirmOne')}</button>}
                     <Link href={`/memories/${m.id}?edit=1`} onClick={close} className={btnGhost}>{v('review')}</Link>
