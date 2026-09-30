@@ -7,13 +7,14 @@ import {
   extractMemoryWithDependencies,
   extractionPrompt,
   parseExtractionResponse,
+  toGeminiRequest,
   type ExtractionTransport,
 } from "./extraction";
 
-const originalKey = process.env.ANTHROPIC_API_KEY;
+const originalKey = process.env.GEMINI_API_KEY;
 after(() => {
-  if (originalKey === undefined) delete process.env.ANTHROPIC_API_KEY;
-  else process.env.ANTHROPIC_API_KEY = originalKey;
+  if (originalKey === undefined) delete process.env.GEMINI_API_KEY;
+  else process.env.GEMINI_API_KEY = originalKey;
 });
 
 const valid = {
@@ -24,7 +25,7 @@ const valid = {
 const deps = { apiKey: "test-only", sleep: async () => {} };
 
 test("no key does not call the API", async () => {
-  delete process.env.ANTHROPIC_API_KEY;
+  delete process.env.GEMINI_API_KEY;
   assert.deepEqual(await extractMemory({ rawText: "a note" }), { ok: false, reason: "not_configured" });
   let calls = 0;
   assert.deepEqual(await extractMemoryWithDependencies({ rawText: "" }, {
@@ -42,13 +43,31 @@ test("malformed response retries once and succeeds with unchanged request", asyn
   let calls = 0;
   const transport: ExtractionTransport = async (request) => {
     calls++;
-    assert.equal(request.model, process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5");
+    assert.equal(request.model, process.env.GEMINI_MODEL || "gemini-3.8-flash");
     assert.equal(request.max_tokens, 8192);
     assert.equal(request.messages[0].content[0].type, "text");
     return { content: [{ type: "text", text: calls === 1 ? "{bad" : JSON.stringify(valid) }] };
   };
   assert.deepEqual(await extractMemoryWithDependencies({ rawText: "Coffee" }, { ...deps, transport }), { ok: true, data: valid });
   assert.equal(calls, 2);
+});
+
+test("Gemini receives JSON mode and native inline image/PDF parts", () => {
+  const request = toGeminiRequest({
+    model: "gemini-3.8-flash", max_tokens: 8192, system: "Extract JSON only",
+    messages: [{ role: "user", content: [
+      { type: "text", text: "receipt" },
+      { type: "image", source: { type: "base64", media_type: "image/jpeg", data: "aW1hZ2U=" } },
+      { type: "document", source: { type: "base64", media_type: "application/pdf", data: "cGRm" } },
+    ] }],
+  });
+  assert.deepEqual(request.contents, [{ role: "user", parts: [
+    { text: "receipt" },
+    { inlineData: { mimeType: "image/jpeg", data: "aW1hZ2U=" } },
+    { inlineData: { mimeType: "application/pdf", data: "cGRm" } },
+  ] }]);
+  assert.equal(request.config?.responseMimeType, "application/json");
+  assert.equal(request.config?.systemInstruction, "Extract JSON only");
 });
 
 test("two invalid responses never cause a third API call", async () => {

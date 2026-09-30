@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenAI, type GenerateContentParameters } from "@google/genai";
 import sharp from "sharp";
 import { z } from "zod";
 
@@ -62,6 +62,24 @@ export type ExtractionRequest = {
   messages: [{ role: "user"; content: ExtractionContent[] }];
 };
 export type ExtractionTransport = (request: ExtractionRequest) => Promise<{ content: Array<{ type: string; text?: string }> }>;
+
+/** Translate validated text and base64 attachments to Gemini's native parts. */
+export function toGeminiRequest(request: ExtractionRequest): GenerateContentParameters {
+  return {
+    model: request.model,
+    contents: request.messages.map((message) => ({
+      role: "user",
+      parts: message.content.map((block) => block.type === "text"
+        ? { text: block.text }
+        : { inlineData: { mimeType: block.source.media_type, data: block.source.data } }),
+    })),
+    config: {
+      systemInstruction: request.system,
+      responseMimeType: "application/json",
+      maxOutputTokens: request.max_tokens,
+    },
+  };
+}
 
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
@@ -156,15 +174,18 @@ export async function extractMemoryWithDependencies(input: ExtractionInput, depe
   ];
   if (block) content.push(block);
   const request: ExtractionRequest = {
-    model: process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5",
+    model: process.env.GEMINI_MODEL || "gemini-3.8-flash",
     max_tokens: 8192,
     system: extractionPrompt(input, dependencies.now),
     messages: [{ role: "user", content }],
   };
   const transport: ExtractionTransport = dependencies.transport ?? (async (payload) => {
-    const client = new Anthropic({ apiKey: dependencies.apiKey, maxRetries: 0, timeout: 20_000 });
-    const response = await client.messages.create(payload);
-    return response;
+    const client = new GoogleGenAI({
+      apiKey: dependencies.apiKey,
+      httpOptions: { timeout: 20_000, retryOptions: { attempts: 1 } },
+    });
+    const response = await client.models.generateContent(toGeminiRequest(payload));
+    return { content: [{ type: "text", text: response.text ?? "" }] };
   });
   let reason: "unavailable" | "invalid_response" = "invalid_response";
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -183,5 +204,5 @@ export async function extractMemoryWithDependencies(input: ExtractionInput, depe
 }
 
 export async function extractMemory(input: ExtractionInput): Promise<ExtractionOutcome> {
-  return extractMemoryWithDependencies(input, { apiKey: process.env.ANTHROPIC_API_KEY });
+  return extractMemoryWithDependencies(input, { apiKey: process.env.GEMINI_API_KEY });
 }

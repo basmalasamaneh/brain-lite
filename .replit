@@ -25,4 +25,4 @@ channel = "stable-25_05"
 [userenv]
 
 [userenv.shared]
-ANTHROPIC_MODEL = "claude-sonnet-5-5"
+GEMINI_MODEL = "gemini-3.8-flash"

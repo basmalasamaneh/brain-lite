@@ -1,0 +1,1 @@
+- [Gemini model availability](gemini-availability.md) — model listings do not guarantee access; verify with a generation request.

@@ -1,6 +1,6 @@
 # Brain Lite
 
-A bilingual, mobile-first personal second brain for capturing text, photos, and PDFs, with backend-only Claude extraction and manual review.
+A bilingual, mobile-first personal second brain for capturing text, photos, and PDFs, with backend-only Gemini extraction and manual review.
 
 ## Run & Operate
 
@@ -11,8 +11,8 @@ A bilingual, mobile-first personal second brain for capturing text, photos, and 
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - Required env: `DATABASE_URL` — Postgres connection string
-- `ANTHROPIC_API_KEY` — set only through Secrets; missing key saves an explicitly labeled plain-note fallback.
-- `ANTHROPIC_MODEL` — configurable Anthropic model, defaults to the user-requested `claude-sonnet-5-5`. Model availability must be verified against the user's account; do not silently substitute another model.
+- `GEMINI_API_KEY` — set only through Secrets; missing key saves an explicitly labeled plain-note fallback.
+- `GEMINI_MODEL` — configurable Gemini model, defaults to `gemini-3.8-flash`.
 
 ## Stack
 
@@ -33,9 +33,9 @@ A bilingual, mobile-first personal second brain for capturing text, photos, and 
 ## Architecture decisions
 
 - The user chose a mobile-first React/Vite web app after initially selecting mobile output; do not switch to Expo.
-- Capture extraction uses the user's direct Anthropic API key (not the Replit AI proxy). Chat/Ask remains out of scope.
+- Capture extraction uses the user's direct Gemini API key (not the Replit AI proxy). Chat/Ask remains out of scope.
 - AI confidence of 80 or higher auto-confirms; lower confidence and failed extraction require review. Preserve raw text and the original attachment regardless of extraction outcome.
-- Only owned, size-checked attachments are sent to Anthropic. The backend encodes PDFs and normalized images as base64 blocks; the browser never receives an Anthropic key.
+- Only owned, size-checked attachments are sent to Google Gemini. The backend encodes PDFs and normalized images as inline base64 parts; the browser never receives a Gemini key.
 - Personal captures require sign-in; anonymous visitors see read-only samples, not other users' content. This protects potentially sensitive documents without hiding the initial experience behind a login screen.
 - File bytes live in private App Storage; PostgreSQL holds paths and ownership metadata.
 
