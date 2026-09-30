@@ -87,6 +87,105 @@ self.addEventListener('activate', event => {
     await self.clients.claim();
   })());
 });
+function safeDestination(value) {
+  try {
+    const url = new URL(value || BASE, self.location.origin);
+    if (url.origin !== self.location.origin || url.username || url.password) return new URL(BASE, self.location.origin).href;
+    let path = url.pathname;
+    const prefix = BASE.replace(/\\/$/, '');
+    if (prefix && path.startsWith(prefix + '/')) path = path.slice(prefix.length);
+    if (!/^\\/(?:memories\\/[1-9]\\d*|spaces(?:\\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})?|settings|notifications)?\\/?$/i.test(path)) return new URL(BASE, self.location.origin).href;
+    return new URL(BASE + path.replace(/^\\//, ''), self.location.origin).href;
+  } catch { return new URL(BASE, self.location.origin).href; }
+}
+async function openApp(destination) {
+  const url = safeDestination(destination);
+  const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  for (const client of clients) {
+    if (new URL(client.url).origin === self.location.origin && new URL(client.url).pathname.startsWith(BASE)) {
+      if ('navigate' in client) await client.navigate(url);
+      await client.focus();
+      return;
+    }
+  }
+  await self.clients.openWindow(url);
+}
+function pushPresentation(payload) {
+    // Hidden text stays generic, while opaque identifiers, safe destinations
+    // and fixed action labels remain available for authenticated operations.
+    // Never recover memory details using a background API request.
+    const ar = payload.language === 'ar' || payload.lang === 'ar' || /[\\u0600-\\u06ff]/.test(String(payload.body || '') + String(payload.title || ''));
+    const hidden = payload.hide_details === true;
+    const allowedActions = Array.isArray(payload.actions) ? payload.actions.filter(item => item && (item.action === 'done' || item.action === 'snooze')).slice(0, 2) : [];
+    const opaqueId = value => typeof value === 'string' && /^[a-zA-Z0-9_-]{1,128}$/.test(value) ? value : null;
+    const data = {
+      url: safeDestination(payload.url),
+      reminder_id: opaqueId(payload.reminder_id),
+      notification_id: opaqueId(payload.notification_id),
+      actions: allowedActions.map(item => item.action),
+      language: ar ? 'ar' : 'en',
+    };
+    return { title: hidden ? 'Brain Lite' : String(payload.title || 'Brain Lite'), options: {
+      body: hidden ? (ar ? 'لديك تذكير' : 'You have a reminder') : String(payload.body || (ar ? 'لديك تذكير' : 'You have a reminder')),
+      icon: BASE + 'icon-192.png', badge: BASE + 'icon-192.png',
+      tag: data.notification_id ? 'brain-lite-' + data.notification_id : undefined,
+      lang: ar ? 'ar' : 'en', dir: ar ? 'rtl' : 'ltr',
+      data,
+      actions: data.reminder_id ? allowedActions.map(item => ({ action: item.action, title: item.action === 'done' ? (ar ? 'تم' : 'Done') : (ar ? 'تأجيل ساعة' : 'Snooze 1h') })) : [],
+    } };
+}
+self.addEventListener('push', event => {
+  event.waitUntil((async () => {
+    let payload = {};
+    try { payload = event.data ? event.data.json() : {}; } catch { /* An invalid payload must never expose raw text. */ }
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) payload = {};
+    const presentation = pushPresentation(payload);
+    await self.registration.showNotification(presentation.title, presentation.options);
+  })());
+});
+self.addEventListener('notificationclick', event => {
+  event.waitUntil((async () => {
+    const data = event.notification.data || {};
+    const action = event.action;
+    if ((action === 'done' || action === 'snooze') && data.reminder_id && data.actions?.includes(action)) {
+      try {
+        const response = await fetch('/api/reminders/' + encodeURIComponent(data.reminder_id), {
+          method: 'PATCH', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action, ...(action === 'snooze' ? { snooze: 'hour' } : {}) }),
+        });
+        if (!response.ok) throw new Error('Reminder action failed');
+        event.notification.close();
+        const clients = await self.clients.matchAll({ type: 'window' });
+        for (const client of clients) client.postMessage({ type: 'BRAIN_LITE_REMINDERS_CHANGED' });
+        return;
+      } catch {
+        // Do not claim success or discard the notification when offline/auth fails.
+        await self.registration.showNotification('Brain Lite', {
+          body: data.language === 'ar' ? 'تعذّر تحديث التذكير. افتح التطبيق وحاول مجددًا.' : 'Could not update this reminder. Open the app and try again.',
+          icon: BASE + 'icon-192.png', data: { url: data.url },
+        });
+        await openApp(data.url);
+        return;
+      }
+    }
+    event.notification.close();
+    if (data.notification_id) {
+      // Mark read only through the authenticated session; failure leaves the
+      // in-app item unread, so it is not lost when the user signs in again.
+      try { await fetch('/api/notifications/' + encodeURIComponent(data.notification_id), {
+        method: 'PATCH', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ read: true }),
+      }); } catch { /* Open the authenticated application even when offline. */ }
+    }
+    await openApp(data.url);
+  })());
+});
+self.addEventListener('message', event => {
+  if (event.data?.type === 'BRAIN_LITE_CLEAR_NOTIFICATIONS') event.waitUntil((async () => {
+    for (const notification of await self.registration.getNotifications()) notification.close();
+  })());
+});
 self.addEventListener('fetch', event => {
   const request = event.request;
   if (request.method !== 'GET') return;

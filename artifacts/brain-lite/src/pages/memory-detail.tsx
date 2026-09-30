@@ -15,6 +15,7 @@ import { voiceText } from '@/lib/i18n-voice';
 import { SimilarMemories } from '@/components/semantic-memories';
 import { MemoryConnections } from '@/components/connections';
 import { MemorySpaces } from '@/components/spaces';
+import { MemoryReminderControl } from '@/components/notifications';
 
 type Draft = { title: string; raw_text: string; transcript: string; summary: string; type: MemoryType; status: MemoryStatus; date: string; time: string; amount: string; currency: string; people: string; tags: string; extra: string };
 
@@ -235,6 +236,7 @@ export default function MemoryDetailPage() {
             </Surface>
 
             <CalendarLink m={m} />
+            {isAuthenticated && <MemoryReminderControl key={`reminders-${id}`} id={id} />}
             {isAuthenticated ? (
               <div className="rise space-y-2" style={{ animationDelay: '140ms' }}>
                 {m.status === 'needs_review' && (!m.extraction_status || m.extraction_status === 'legacy') && (

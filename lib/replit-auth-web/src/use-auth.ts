@@ -100,7 +100,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
-    try { await call<void>('logout', 'POST'); } finally { seq.current++; setUser(null); setStatus('ready'); }
+    let endpoint: string | undefined;
+    if ('serviceWorker' in navigator) {
+      try {
+        const registration = await navigator.serviceWorker.getRegistration();
+        const subscription = await registration?.pushManager.getSubscription();
+        endpoint = subscription?.endpoint;
+        // Server session binding remains authoritative even if this fails.
+        if (endpoint) await fetch('/api/notifications/subscriptions', {
+          method: 'DELETE', credentials: 'include', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({endpoint}),
+        });
+        await subscription?.unsubscribe();
+      } catch { /* best effort device unsubscribe; logout below is required */ }
+    }
+    // Do not falsely mark the session logged out when server-side cleanup fails.
+    await call<void>('logout', 'POST', endpoint ? {endpoint} : undefined);
+    seq.current++; setUser(null); setStatus('ready');
   }, []);
 
   // Last-write-wins: stale responses from earlier PATCHes are ignored.

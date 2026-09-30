@@ -17,6 +17,8 @@ import { cn } from '@/lib/utils';
 import { useIndexStatus, useReindex } from '@/hooks/use-semantic-search';
 import { searchText } from '@/lib/i18n-search';
 import { ConnectionSettingsSection } from '@/components/connections';
+import { NotificationSettingsSection } from '@/components/notifications';
+import { clearNotificationCaches, disconnectCurrentPush } from '@/lib/notifications';
 
 // API is mounted at /api on the same origin (not under the web base path).
 const EXPORT_URL = '/api/brain/export';
@@ -73,6 +75,8 @@ export default function SettingsPage() {
     if (typed !== 'DELETE') return;
     del.mutate({ data: { confirmation: 'DELETE' } }, {
       onSuccess: () => {
+        void disconnectCurrentPush().catch(() => undefined);
+        clearNotificationCaches(qc);
         askSession.clear();
         qc.removeQueries({ predicate: (q) => ['/api/memories', '/api/brain', '/api/search', '/api/indexing', '/api/connections', '/local/connections'].some((prefix) => String(q.queryKey[0] ?? '').startsWith(prefix)) });
         qc.invalidateQueries();
@@ -88,6 +92,7 @@ export default function SettingsPage() {
       <PageHeader eyebrow={t('settingsEyebrow')} title={t('settingsTitle')} lead={t('settingsLead')} />
       <div className="space-y-4">
         <AccountSection />
+        {isAuthenticated && <NotificationSettingsSection />}
         {isAuthenticated && <ConnectionSettingsSection />}
         {isAuthenticated && <IndexingSection />}
         <Section icon={Palette} title={t('appearance')}>
@@ -231,7 +236,7 @@ function AccountSection() {
   };
   const doLogout = async () => {
     setOutBusy(true);
-    try { await logout(); navigate('/login', { replace: true }); }
+    try { await disconnectCurrentPush().catch(() => undefined); await logout(); navigate('/login', { replace: true }); }
     catch { toast({ variant: 'destructive', title: t('logoutFail') }); setOutBusy(false); }
   };
 
@@ -302,6 +307,7 @@ function DangerAccount() {
     setBusy(true); setErr(null);
     try {
       await deleteAccount(pw);
+      await disconnectCurrentPush().catch(() => undefined);
       setTyped(''); setPw(''); setOpen(false);
       askSession.clear();
       toast({ title: t('deleteAccountDone') });

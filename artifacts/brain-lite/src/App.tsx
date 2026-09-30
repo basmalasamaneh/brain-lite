@@ -2,6 +2,7 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 import { AuthProvider, useAuth } from '@workspace/replit-auth-web';
+import { useInitializeNotificationTimezone } from '@workspace/api-client-react';
 import { RequireAuth, PublicOnly } from '@/components/auth-gate';
 import { askSession } from '@/lib/ask-session';
 import AuthPage from '@/pages/auth';
@@ -21,6 +22,8 @@ import AskPage from '@/pages/ask';
 import SettingsPage from '@/pages/settings';
 import SpacesPage from '@/pages/spaces';
 import SpaceDetailPage from '@/pages/space-detail';
+import { NotificationCenter } from '@/components/notifications';
+import { useToast } from '@/hooks/use-toast';
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } } });
 
@@ -32,10 +35,52 @@ function AuthCacheSync() {
   const id = user?.id ?? null;
   useEffect(() => {
     if (isLoading) return;
-    if (prev.current !== undefined && prev.current !== id) qc.clear();
+    if (prev.current !== undefined && prev.current !== id) {
+      qc.clear();
+      if ('serviceWorker' in navigator) void navigator.serviceWorker.getRegistration(import.meta.env.BASE_URL).then(registration => registration?.active?.postMessage({ type: 'BRAIN_LITE_CLEAR_NOTIFICATIONS' })).catch(() => undefined);
+    }
     askSession.setOwner(id);
     prev.current = id;
   }, [id, isLoading, qc]);
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+    const refresh = (event: MessageEvent) => {
+      if (event.data?.type === 'BRAIN_LITE_REMINDERS_CHANGED') {
+        qc.invalidateQueries({ predicate: q => String(q.queryKey[0]).startsWith('/api/reminders') || String(q.queryKey[0]).startsWith('/api/notifications') });
+      }
+    };
+    navigator.serviceWorker.addEventListener('message', refresh);
+    return () => navigator.serviceWorker.removeEventListener('message', refresh);
+  }, [qc]);
+  return null;
+}
+
+// Runs once for each authenticated identity on this app load, including users
+// who completed onboarding before notification settings existed. The server's
+// initialized guard makes this safe for already-edited timezones.
+function NotificationTimezoneSync() {
+  const { user, isLoading } = useAuth();
+  const qc = useQueryClient();
+  const { lang } = useI18n();
+  const { toast } = useToast();
+  const attempted = useRef(new Set<string>());
+  const { mutate } = useInitializeNotificationTimezone({ request: { credentials: 'include' } });
+  const owner = user?.id;
+  useEffect(() => {
+    if (isLoading || !owner || attempted.current.has(owner)) return;
+    attempted.current.add(owner);
+    mutate({ data: { timezone: Intl.DateTimeFormat().resolvedOptions().timeZone } }, {
+      onSuccess: settings => {
+        qc.setQueryData(['/api/notifications/settings', owner], settings);
+        qc.invalidateQueries({ predicate: q => q.queryKey[1] === owner && String(q.queryKey[0]).startsWith('/api/reminders') });
+      },
+      onError: error => toast({
+        variant: 'destructive',
+        title: lang === 'ar' ? 'تعذّر إعداد المنطقة الزمنية للتذكيرات' : 'Could not initialize your reminder timezone',
+        description: lang === 'ar' ? 'اختر منطقتك الزمنية في إعدادات الإشعارات قبل جدولة التذكيرات.' : `Choose your timezone in notification Settings before scheduling reminders. ${error.message}`,
+      }),
+    });
+  }, [isLoading, owner, mutate, qc, lang, toast]);
   return null;
 }
 
@@ -78,6 +123,7 @@ function Router() {
               <RoutedErrorBoundary>
                 <Switch>
                   <Route path="/" component={HomePage} />
+                  <Route path="/notifications" component={NotificationCenter} />
                   <Route path="/capture" component={CapturePage} />
                   <Route path="/memories" component={MemoriesPage} />
                   <Route path="/memories/:id" component={MemoryDetailPage} />
@@ -104,6 +150,7 @@ function App() {
           <AuthProvider>
           <TooltipProvider>
             <AuthCacheSync />
+            <NotificationTimezoneSync />
             <ProfilePrefsSync />
             <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
               <Router />

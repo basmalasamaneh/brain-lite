@@ -11,6 +11,229 @@ tags:
   - name: health
     description: Health operations
 paths:
+  /notifications/settings:
+    post:
+      operationId: initializeNotificationTimezone
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/NotificationTimezoneInput"}
+      responses:
+        "200":
+          description: First-write-only timezone initialization; subsequent calls preserve user choice
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/NotificationSettings"}
+    get:
+      operationId: getNotificationSettings
+      responses:
+        "200":
+          description: Owned notification settings; GET never initializes timezone
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/NotificationSettings"}
+    patch:
+      operationId: updateNotificationSettings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/NotificationSettingsPatch"}
+      responses:
+        "200":
+          description: Saved settings
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/NotificationSettings"}
+  /notifications/push-config:
+    get:
+      operationId: getPushConfig
+      responses:
+        "200":
+          description: Public VAPID configuration only
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [public_key, configured]
+                properties:
+                  public_key: {type: [string, "null"]}
+                  configured: {type: boolean}
+  /notifications/devices:
+    get:
+      operationId: listNotificationDevices
+      responses:
+        "200":
+          description: Owned devices without subscription secrets
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [devices]
+                properties:
+                  devices:
+                    type: array
+                    items: {$ref: "#/components/schemas/NotificationDevice"}
+  /notifications/devices/{id}:
+    delete:
+      operationId: deleteNotificationDevice
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "204": {description: Owned device removed}
+        "404": {description: Device not owned}
+  /notifications/subscriptions:
+    post:
+      operationId: subscribePush
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/PushSubscriptionInput"}
+      responses:
+        "201":
+          description: Subscription saved and bound to current session
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id]
+                properties:
+                  id: {type: string, format: uuid}
+        "409": {description: Endpoint belongs to another account}
+    delete:
+      operationId: unsubscribePush
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/UnsubscribePushInput"}
+      responses:
+        "204": {description: Current session device removed}
+  /notifications/test:
+    post:
+      operationId: sendTestNotification
+      responses:
+        "200":
+          description: Honest provider acceptance result; missing keys never claim delivery
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, delivered]
+                properties:
+                  status: {type: string, enum: [sent, not_configured, no_devices, disabled, failed, limited]}
+                  delivered: {type: integer}
+  /notifications:
+    get:
+      operationId: listNotifications
+      responses:
+        "200":
+          description: Owned notification center
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [notifications, unread_count]
+                properties:
+                  unread_count: {type: integer}
+                  notifications:
+                    type: array
+                    items: {$ref: "#/components/schemas/Notification"}
+  /notifications/read-all:
+    post:
+      operationId: readAllNotifications
+      responses:
+        "204": {description: Owned notifications marked read}
+  /notifications/{id}:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+    patch:
+      operationId: readNotification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ReadNotificationInput"}
+      responses:
+        "204": {description: Marked read}
+    delete:
+      operationId: deleteNotification
+      responses:
+        "204": {description: Dismissed notification}
+  /reminders:
+    get:
+      operationId: listReminders
+      parameters:
+        - {name: memory_id, in: query, schema: {type: integer}}
+      responses:
+        "200":
+          description: Owned pending and snoozed reminders in UTC
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [reminders]
+                properties:
+                  reminders:
+                    type: array
+                    items: {$ref: "#/components/schemas/Reminder"}
+  /reminders/{id}:
+    patch:
+      operationId: actOnReminder
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ReminderAction"}
+      responses:
+        "204": {description: Reminder updated}
+        "404": {description: Reminder not owned}
+        "409": {description: Terminal reminder or duplicate snooze time}
+  /memories/{id}/reminder-settings:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: integer}}
+    get:
+      operationId: getMemoryReminderSettings
+      responses:
+        "200":
+          description: Memory override
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/MemoryReminderSettings"}
+    put:
+      operationId: updateMemoryReminderSettings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/MemoryReminderSettings"}
+      responses:
+        "200":
+          description: Saved override and transactionally materialized visible pending reminders; delivery still uses the scheduler
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/MemoryReminderSettings"}
+  /cron/tick:
+    post:
+      operationId: tickNotifications
+      security: [{CronBearer: []}]
+      responses:
+        "200":
+          description: Scheduler claimed notices; not a delivery guarantee
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [claimed, failed]
+                properties:
+                  claimed: {type: integer}
+                  failed: {type: integer}
+        "401": {description: Invalid CRON_SECRET}
+        "503": {description: A scheduler owner transaction failed; durable delivery claims are not retried}
   /spaces:
     get:
       operationId: listSpaces
@@ -637,7 +860,113 @@ paths:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
 components:
+  securitySchemes:
+    CronBearer: {type: http, scheme: bearer}
   schemas:
+    NotificationTimezoneInput:
+      type: object
+      required: [timezone]
+      properties:
+        timezone: {type: string}
+    UnsubscribePushInput:
+      type: object
+      required: [endpoint]
+      properties:
+        endpoint: {type: string}
+    ReadNotificationInput:
+      type: object
+      required: [read]
+      properties:
+        read: {type: boolean, enum: [true]}
+    NotificationSettings:
+      type: object
+      required: [timezone, timezone_initialized, push_enabled, email_enabled, daily_brief_enabled, daily_brief_time, quiet_hours_start, quiet_hours_end, remind_appointments, remind_tasks, remind_expiries, remind_suggestions, default_lead_days, hide_details]
+      properties:
+        timezone: {type: string}
+        timezone_initialized: {type: boolean}
+        push_enabled: {type: boolean}
+        email_enabled: {type: boolean}
+        daily_brief_enabled: {type: boolean}
+        daily_brief_time: {type: string}
+        quiet_hours_start: {type: string}
+        quiet_hours_end: {type: string}
+        remind_appointments: {type: boolean}
+        remind_tasks: {type: boolean}
+        remind_expiries: {type: boolean}
+        remind_suggestions: {type: boolean}
+        default_lead_days: {type: array, items: {type: integer}}
+        hide_details: {type: boolean}
+    NotificationSettingsPatch:
+      type: object
+      additionalProperties: false
+      properties:
+        timezone: {type: string}
+        push_enabled: {type: boolean}
+        email_enabled: {type: boolean}
+        daily_brief_enabled: {type: boolean}
+        daily_brief_time: {type: string}
+        quiet_hours_start: {type: string}
+        quiet_hours_end: {type: string}
+        remind_appointments: {type: boolean}
+        remind_tasks: {type: boolean}
+        remind_expiries: {type: boolean}
+        remind_suggestions: {type: boolean}
+        default_lead_days: {type: array, items: {type: integer}}
+        hide_details: {type: boolean}
+    PushSubscriptionInput:
+      type: object
+      required: [endpoint, keys]
+      properties:
+        endpoint: {type: string}
+        expirationTime: {type: [number, "null"]}
+        keys:
+          type: object
+          required: [p256dh, auth]
+          properties:
+            p256dh: {type: string}
+            auth: {type: string}
+    NotificationDevice:
+      type: object
+      required: [id, user_agent, created_at, last_used_at]
+      properties:
+        id: {type: string}
+        user_agent: {type: [string, "null"]}
+        created_at: {type: string, format: date-time}
+        last_used_at: {type: string, format: date-time}
+    Notification:
+      type: object
+      required: [id, title, body, url, kind, read, created_at]
+      properties:
+        id: {type: string}
+        title: {type: string}
+        body: {type: string}
+        url: {type: string}
+        kind: {type: string}
+        read: {type: boolean}
+        created_at: {type: string, format: date-time}
+    Reminder:
+      type: object
+      required: [id, memory_id, title, kind, fire_at, status]
+      properties:
+        id: {type: string}
+        memory_id: {type: integer}
+        title: {type: string}
+        kind: {type: string, enum: [appointment, task, expiry, custom]}
+        fire_at: {type: string, format: date-time}
+        status: {type: string, enum: [pending, sent, snoozed, done, dismissed]}
+    ReminderAction:
+      type: object
+      required: [action]
+      properties:
+        action: {type: string, enum: [done, dismiss, snooze]}
+        snooze: {type: string, enum: [hour, tomorrow, week]}
+    MemoryReminderSettings:
+      type: object
+      required: [mode, lead_minutes, specific_at]
+      properties:
+        mode: {type: string, enum: [automatic, none, lead_times, specific]}
+        lead_minutes: {type: array, items: {type: integer}}
+        specific_at: {type: [string, "null"], format: date-time}
     SpaceKind:
       type: string
       enum: [project, person, trip, topic]

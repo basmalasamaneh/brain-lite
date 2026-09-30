@@ -22,3 +22,4 @@ export * from "./memories";
 export * from "./auth";
 export * from "./uploads";
 export * from "./connections";
+export * from "./notifications";

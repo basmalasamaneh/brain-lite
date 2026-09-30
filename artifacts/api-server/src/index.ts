@@ -5,6 +5,7 @@ import { initializeConnections } from "./lib/connections";
 import { startConnectionWorker } from "./lib/connections-discovery";
 import { initializeSpaces } from "./lib/spaces";
 import { startSpacesWorker } from "./lib/spaces-discovery";
+import { initializeNotifications, startNotificationWorker } from "./lib/notifications";
 
 const rawPort = process.env["PORT"];
 
@@ -23,9 +24,11 @@ if (Number.isNaN(port) || port <= 0) {
 await initializeSemanticSearch();
 await initializeConnections();
 await initializeSpaces();
+await initializeNotifications();
 startEmbeddingWorker();
 startConnectionWorker();
 startSpacesWorker();
+startNotificationWorker();
 app.listen(port, (err) => {
   if (err) {
     logger.error({ err }, "Error listening on port");

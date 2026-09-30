@@ -14,6 +14,8 @@ import { InstallPrompt } from '@/components/install-prompt';
 import { useMobileKeyboard } from '@/hooks/use-mobile-keyboard';
 import { spaceText } from '@/lib/i18n-spaces';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { NotificationBell } from '@/components/notifications';
+import { disconnectCurrentPush } from '@/lib/notifications';
 
 const nav: { href: string; key: TKey; icon: typeof Home }[] = [
   { href: '/', key: 'navHome', icon: Home },
@@ -90,7 +92,7 @@ function AuthBlock() {
   const name = user.name || user.email;
   const doLogout = async () => {
     setBusy(true);
-    try { await logout(); navigate('/login', { replace: true }); }
+    try { await disconnectCurrentPush().catch(() => undefined); await logout(); navigate('/login', { replace: true }); }
     catch { toast({ variant: 'destructive', title: t('logoutFail') }); setBusy(false); }
   };
   return (
@@ -126,7 +128,7 @@ function AccountMenu() {
       <DropdownMenuItem onSelect={() => navigate('/settings')} className="min-h-11 gap-2 rounded-xl" data-testid="menu-settings"><Settings className="h-4 w-4" />{t('navSettings')}</DropdownMenuItem>
       <DropdownMenuItem disabled={busy} onSelect={async () => {
         setBusy(true);
-        try { await logout(); navigate('/login', { replace: true }); }
+        try { await disconnectCurrentPush().catch(() => undefined); await logout(); navigate('/login', { replace: true }); }
         catch { toast({ variant: 'destructive', title: t('logoutFail') }); setBusy(false); }
       }} className="min-h-11 gap-2 rounded-xl"><LogOut className="h-4 w-4" />{t('logout')}</DropdownMenuItem>
     </DropdownMenuContent>
@@ -143,7 +145,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="min-h-[100dvh]">
       <aside className="fixed inset-y-0 start-0 z-30 hidden w-72 flex-col border-e border-sidebar-border bg-sidebar/90 p-6 backdrop-blur md:flex">
         <div className="pattern-star pointer-events-none absolute inset-x-0 top-0 h-48 [mask-image:linear-gradient(to_bottom,black,transparent)]" aria-hidden />
-        <div className="relative flex items-center justify-between gap-2"><Logo /><AccountMenu /></div>
+        <div className="relative flex items-center justify-between gap-2"><Logo /><div className="flex">{loc === '/' && <NotificationBell />}<AccountMenu /></div></div>
         <p className="relative mt-3 text-xs text-muted-foreground">{t('tagline')}</p>
         <nav className="relative mt-10 flex flex-col gap-1" aria-label={t('mainNav')}>
           {nav.map(({ href, key, icon: Icon }) => {
@@ -170,6 +172,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <header className="mobile-safe-header sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-border bg-background/85 px-4 py-2 backdrop-blur md:hidden">
         <Logo />
         <div className="flex items-center">
+          {loc === '/' && <NotificationBell />}
           <LangSwitch compact />
           <ThemeCycle />
           <AccountMenu />

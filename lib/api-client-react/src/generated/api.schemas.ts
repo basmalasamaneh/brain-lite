@@ -5,6 +5,151 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface NotificationTimezoneInput {
+  timezone: string;
+}
+
+export interface UnsubscribePushInput {
+  endpoint: string;
+}
+
+export interface ReadNotificationInput {
+  read: true;
+}
+
+export interface NotificationSettings {
+  timezone: string;
+  timezone_initialized: boolean;
+  push_enabled: boolean;
+  email_enabled: boolean;
+  daily_brief_enabled: boolean;
+  daily_brief_time: string;
+  quiet_hours_start: string;
+  quiet_hours_end: string;
+  remind_appointments: boolean;
+  remind_tasks: boolean;
+  remind_expiries: boolean;
+  remind_suggestions: boolean;
+  default_lead_days: number[];
+  hide_details: boolean;
+}
+
+export interface NotificationSettingsPatch {
+  timezone?: string;
+  push_enabled?: boolean;
+  email_enabled?: boolean;
+  daily_brief_enabled?: boolean;
+  daily_brief_time?: string;
+  quiet_hours_start?: string;
+  quiet_hours_end?: string;
+  remind_appointments?: boolean;
+  remind_tasks?: boolean;
+  remind_expiries?: boolean;
+  remind_suggestions?: boolean;
+  default_lead_days?: number[];
+  hide_details?: boolean;
+}
+
+export type PushSubscriptionInputKeys = {
+  p256dh: string;
+  auth: string;
+};
+
+export interface PushSubscriptionInput {
+  endpoint: string;
+  /** @nullable */
+  expirationTime?: number | null;
+  keys: PushSubscriptionInputKeys;
+}
+
+export interface NotificationDevice {
+  id: string;
+  /** @nullable */
+  user_agent: string | null;
+  created_at: string;
+  last_used_at: string;
+}
+
+export interface Notification {
+  id: string;
+  title: string;
+  body: string;
+  url: string;
+  kind: string;
+  read: boolean;
+  created_at: string;
+}
+
+export type ReminderKind = typeof ReminderKind[keyof typeof ReminderKind];
+
+
+export const ReminderKind = {
+  appointment: 'appointment',
+  task: 'task',
+  expiry: 'expiry',
+  custom: 'custom',
+} as const;
+
+export type ReminderStatus = typeof ReminderStatus[keyof typeof ReminderStatus];
+
+
+export const ReminderStatus = {
+  pending: 'pending',
+  sent: 'sent',
+  snoozed: 'snoozed',
+  done: 'done',
+  dismissed: 'dismissed',
+} as const;
+
+export interface Reminder {
+  id: string;
+  memory_id: number;
+  title: string;
+  kind: ReminderKind;
+  fire_at: string;
+  status: ReminderStatus;
+}
+
+export type ReminderActionAction = typeof ReminderActionAction[keyof typeof ReminderActionAction];
+
+
+export const ReminderActionAction = {
+  done: 'done',
+  dismiss: 'dismiss',
+  snooze: 'snooze',
+} as const;
+
+export type ReminderActionSnooze = typeof ReminderActionSnooze[keyof typeof ReminderActionSnooze];
+
+
+export const ReminderActionSnooze = {
+  hour: 'hour',
+  tomorrow: 'tomorrow',
+  week: 'week',
+} as const;
+
+export interface ReminderAction {
+  action: ReminderActionAction;
+  snooze?: ReminderActionSnooze;
+}
+
+export type MemoryReminderSettingsMode = typeof MemoryReminderSettingsMode[keyof typeof MemoryReminderSettingsMode];
+
+
+export const MemoryReminderSettingsMode = {
+  automatic: 'automatic',
+  none: 'none',
+  lead_times: 'lead_times',
+  specific: 'specific',
+} as const;
+
+export interface MemoryReminderSettings {
+  mode: MemoryReminderSettingsMode;
+  lead_minutes: number[];
+  /** @nullable */
+  specific_at: string | null;
+}
+
 export type SpaceKind = typeof SpaceKind[keyof typeof SpaceKind];
 
 
@@ -740,6 +885,55 @@ export interface MemoryStats {
 export interface HealthStatus {
   status: string;
 }
+
+export type GetPushConfig200 = {
+  /** @nullable */
+  public_key: string | null;
+  configured: boolean;
+};
+
+export type ListNotificationDevices200 = {
+  devices: NotificationDevice[];
+};
+
+export type SubscribePush201 = {
+  id: string;
+};
+
+export type SendTestNotification200Status = typeof SendTestNotification200Status[keyof typeof SendTestNotification200Status];
+
+
+export const SendTestNotification200Status = {
+  sent: 'sent',
+  not_configured: 'not_configured',
+  no_devices: 'no_devices',
+  disabled: 'disabled',
+  failed: 'failed',
+  limited: 'limited',
+} as const;
+
+export type SendTestNotification200 = {
+  status: SendTestNotification200Status;
+  delivered: number;
+};
+
+export type ListNotifications200 = {
+  unread_count: number;
+  notifications: Notification[];
+};
+
+export type ListRemindersParams = {
+memory_id?: number;
+};
+
+export type ListReminders200 = {
+  reminders: Reminder[];
+};
+
+export type TickNotifications200 = {
+  claimed: number;
+  failed: number;
+};
 
 export type ListSpacesParams = {
 archived?: boolean;

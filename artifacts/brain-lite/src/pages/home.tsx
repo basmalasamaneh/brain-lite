@@ -12,6 +12,7 @@ import { DailyBriefSection } from '@/components/daily-brief';
 
 import { IconCircle } from '@/components/brand';
 import { HomeSpaces } from '@/components/spaces';
+import { HomeReminders } from '@/components/notifications';
 export default function HomePage() {
   const { t, lang } = useI18n();
   usePageTitle(t('navHome'));
@@ -38,6 +39,7 @@ export default function HomePage() {
     <>
       <SampleBanner />
       <DailyBriefSection />
+      {isAuthenticated && <HomeReminders />}
       <HomeSpaces />
 
       <section className="rise mb-10" data-testid="section-inbox">

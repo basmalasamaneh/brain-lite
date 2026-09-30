@@ -79,6 +79,9 @@ app.use("/api", (req, res, next) => {
 // Authenticate all API paths except the two public credential endpoints.
 app.use("/api", (req, res, next) => {
   if (req.method === "POST" && (req.path === "/auth/signup" || req.path === "/auth/login")) return next();
+  // These handlers verify their own narrowly scoped Bearer/HMAC capability.
+  if (req.method === "POST" && req.path === "/cron/tick") return next();
+  if (req.method === "GET" && req.path === "/notifications/unsubscribe") return next();
   authMiddleware(req, res, next);
 });
 

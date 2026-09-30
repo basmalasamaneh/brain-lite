@@ -7,6 +7,7 @@ import { z } from "zod";
 import { publicUser } from "../lib/auth";
 import { ObjectNotFoundError, ObjectStorageService } from "../lib/objectStorage";
 import { activeCaptures, activeQuestions, activeUploadRequests, deletingUsers } from "../lib/brain-state";
+import { clearNotifications, notificationTransaction, resumeNotifications } from "../lib/notifications";
 
 const router: IRouter = Router();
 const storage = new ObjectStorageService();
@@ -22,12 +23,21 @@ const profile = signup.pick({ name: true, language: true, theme: true }).partial
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: "draft-7", legacyHeaders: false,
   message: { error: "Too many attempts. Try again later." } });
 
-function establish(req: Request, userId: string): Promise<void> {
-  return new Promise((resolve, reject) => req.session.regenerate((error) => {
-    if (error) return reject(error);
-    req.session.userId = userId;
-    req.session.save((saveError) => saveError ? reject(saveError) : resolve());
+async function establish(req: Request, userId: string): Promise<void> {
+  const previousUser=req.session.userId,previousSession=req.sessionID;
+  const regenerate=()=>new Promise<void>((resolve,reject)=>req.session.regenerate(error=>{
+    if(error)return reject(error);
+    req.session.userId=userId;
+    req.session.save(saveError=>saveError?reject(saveError):resolve());
   }));
+  // Public login/signup may replace another account in the same browser.
+  // Serialize removal with its delivery fence BEFORE destroying its session.
+  if(previousUser && (await pool.query("SELECT id FROM users WHERE id=$1",[previousUser])).rowCount) {
+    await notificationTransaction(previousUser,async c=>{
+      await c.query("DELETE FROM push_subscriptions WHERE user_id=$1 AND session_id=$2",[previousUser,previousSession]);
+      await regenerate();
+    });
+  }else await regenerate();
 }
 function destroy(req: Request): Promise<void> {
   return new Promise((resolve, reject) => req.session.destroy((error) => error ? reject(error) : resolve()));
@@ -72,12 +82,18 @@ router.post("/auth/login", limiter, async (req, res) => {
     res.status(401).json({ error: "Invalid email or password" }); return;
   }
   await establish(req, user.id);
+  await resumeNotifications(user.id);
   res.json({ user: publicUser(user) });
 });
 router.post("/auth/logout", async (req, res) => {
-  await destroy(req);
-  res.clearCookie("brain.sid", { path: "/" });
-  res.sendStatus(204);
+  const userId=req.user!.id;
+  deletingUsers.add(userId);
+  try {
+    await clearNotifications(userId,req.sessionID,typeof req.body?.endpoint==="string"?req.body.endpoint:undefined);
+    await destroy(req);
+    res.clearCookie("brain.sid", { path: "/" });
+    res.sendStatus(204);
+  }finally{deletingUsers.delete(userId);}
 });
 router.get("/auth/me", (req, res) => res.json({ user: req.user }));
 router.patch("/auth/profile", async (req, res) => {
@@ -97,7 +113,10 @@ router.post("/auth/password", async (req, res) => {
   await db.update(usersTable).set({ passwordHash: await bcrypt.hash(parsed.data.newPassword, 12) })
     .where(eq(usersTable.id, user.id));
   // Revoke all other sessions. PostgreSQL sessions store only userId, never passwords.
-  await pool.query("DELETE FROM sessions WHERE sess->>'userId' = $1 AND sid <> $2", [user.id, req.sessionID]);
+  await notificationTransaction(user.id,async c=>{
+    await c.query("DELETE FROM push_subscriptions WHERE user_id=$1 AND session_id<>$2",[user.id,req.sessionID]);
+    await c.query("DELETE FROM sessions WHERE sess->>'userId'=$1 AND sid<>$2",[user.id,req.sessionID]);
+  });
   res.sendStatus(204);
 });
 router.delete("/auth/account", async (req, res) => {

@@ -8,6 +8,227 @@
 import * as zod from 'zod';
 
 
+export const InitializeNotificationTimezoneBody = zod.object({
+  "timezone": zod.string()
+})
+
+export const InitializeNotificationTimezoneResponse = zod.object({
+  "timezone": zod.string(),
+  "timezone_initialized": zod.boolean(),
+  "push_enabled": zod.boolean(),
+  "email_enabled": zod.boolean(),
+  "daily_brief_enabled": zod.boolean(),
+  "daily_brief_time": zod.string(),
+  "quiet_hours_start": zod.string(),
+  "quiet_hours_end": zod.string(),
+  "remind_appointments": zod.boolean(),
+  "remind_tasks": zod.boolean(),
+  "remind_expiries": zod.boolean(),
+  "remind_suggestions": zod.boolean(),
+  "default_lead_days": zod.array(zod.number().int()),
+  "hide_details": zod.boolean()
+})
+
+
+export const GetNotificationSettingsResponse = zod.object({
+  "timezone": zod.string(),
+  "timezone_initialized": zod.boolean(),
+  "push_enabled": zod.boolean(),
+  "email_enabled": zod.boolean(),
+  "daily_brief_enabled": zod.boolean(),
+  "daily_brief_time": zod.string(),
+  "quiet_hours_start": zod.string(),
+  "quiet_hours_end": zod.string(),
+  "remind_appointments": zod.boolean(),
+  "remind_tasks": zod.boolean(),
+  "remind_expiries": zod.boolean(),
+  "remind_suggestions": zod.boolean(),
+  "default_lead_days": zod.array(zod.number().int()),
+  "hide_details": zod.boolean()
+})
+
+
+export const UpdateNotificationSettingsBody = zod.object({
+  "timezone": zod.string().optional(),
+  "push_enabled": zod.boolean().optional(),
+  "email_enabled": zod.boolean().optional(),
+  "daily_brief_enabled": zod.boolean().optional(),
+  "daily_brief_time": zod.string().optional(),
+  "quiet_hours_start": zod.string().optional(),
+  "quiet_hours_end": zod.string().optional(),
+  "remind_appointments": zod.boolean().optional(),
+  "remind_tasks": zod.boolean().optional(),
+  "remind_expiries": zod.boolean().optional(),
+  "remind_suggestions": zod.boolean().optional(),
+  "default_lead_days": zod.array(zod.number().int()).optional(),
+  "hide_details": zod.boolean().optional()
+})
+
+export const UpdateNotificationSettingsResponse = zod.object({
+  "timezone": zod.string(),
+  "timezone_initialized": zod.boolean(),
+  "push_enabled": zod.boolean(),
+  "email_enabled": zod.boolean(),
+  "daily_brief_enabled": zod.boolean(),
+  "daily_brief_time": zod.string(),
+  "quiet_hours_start": zod.string(),
+  "quiet_hours_end": zod.string(),
+  "remind_appointments": zod.boolean(),
+  "remind_tasks": zod.boolean(),
+  "remind_expiries": zod.boolean(),
+  "remind_suggestions": zod.boolean(),
+  "default_lead_days": zod.array(zod.number().int()),
+  "hide_details": zod.boolean()
+})
+
+
+export const GetPushConfigResponse = zod.object({
+  "public_key": zod.string().nullable(),
+  "configured": zod.boolean()
+})
+
+
+export const ListNotificationDevicesResponse = zod.object({
+  "devices": zod.array(zod.object({
+  "id": zod.string(),
+  "user_agent": zod.string().nullable(),
+  "created_at": zod.coerce.date(),
+  "last_used_at": zod.coerce.date()
+}))
+})
+
+
+export const DeleteNotificationDeviceParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const DeleteNotificationDeviceResponse = zod.void()
+
+
+export const SubscribePushBody = zod.object({
+  "endpoint": zod.string(),
+  "expirationTime": zod.number().nullish(),
+  "keys": zod.object({
+  "p256dh": zod.string(),
+  "auth": zod.string()
+})
+})
+
+export const SubscribePushResponse = zod.object({
+  "id": zod.string().uuid()
+})
+
+
+export const UnsubscribePushBody = zod.object({
+  "endpoint": zod.string()
+})
+
+export const UnsubscribePushResponse = zod.void()
+
+
+export const SendTestNotificationResponse = zod.object({
+  "status": zod.enum(['sent', 'not_configured', 'no_devices', 'disabled', 'failed', 'limited']),
+  "delivered": zod.number().int()
+})
+
+
+export const ListNotificationsResponse = zod.object({
+  "unread_count": zod.number().int(),
+  "notifications": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "body": zod.string(),
+  "url": zod.string(),
+  "kind": zod.string(),
+  "read": zod.boolean(),
+  "created_at": zod.coerce.date()
+}))
+})
+
+
+export const ReadAllNotificationsResponse = zod.void()
+
+
+export const ReadNotificationParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const ReadNotificationBody = zod.object({
+  "read": zod.literal(true)
+})
+
+export const ReadNotificationResponse = zod.void()
+
+
+export const DeleteNotificationParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const DeleteNotificationResponse = zod.void()
+
+
+export const ListRemindersQueryParams = zod.object({
+  "memory_id": zod.coerce.number().int().optional()
+})
+
+export const ListRemindersResponse = zod.object({
+  "reminders": zod.array(zod.object({
+  "id": zod.string(),
+  "memory_id": zod.number().int(),
+  "title": zod.string(),
+  "kind": zod.enum(['appointment', 'task', 'expiry', 'custom']),
+  "fire_at": zod.coerce.date(),
+  "status": zod.enum(['pending', 'sent', 'snoozed', 'done', 'dismissed'])
+}))
+})
+
+
+export const ActOnReminderParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const ActOnReminderBody = zod.object({
+  "action": zod.enum(['done', 'dismiss', 'snooze']),
+  "snooze": zod.enum(['hour', 'tomorrow', 'week']).optional()
+})
+
+export const ActOnReminderResponse = zod.void()
+
+
+export const GetMemoryReminderSettingsParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const GetMemoryReminderSettingsResponse = zod.object({
+  "mode": zod.enum(['automatic', 'none', 'lead_times', 'specific']),
+  "lead_minutes": zod.array(zod.number().int()),
+  "specific_at": zod.coerce.date().nullable()
+})
+
+
+export const UpdateMemoryReminderSettingsParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const UpdateMemoryReminderSettingsBody = zod.object({
+  "mode": zod.enum(['automatic', 'none', 'lead_times', 'specific']),
+  "lead_minutes": zod.array(zod.number().int()),
+  "specific_at": zod.coerce.date().nullable()
+})
+
+export const UpdateMemoryReminderSettingsResponse = zod.object({
+  "mode": zod.enum(['automatic', 'none', 'lead_times', 'specific']),
+  "lead_minutes": zod.array(zod.number().int()),
+  "specific_at": zod.coerce.date().nullable()
+})
+
+
+export const TickNotificationsResponse = zod.object({
+  "claimed": zod.number().int(),
+  "failed": zod.number().int()
+})
+
+
 export const ListSpacesQueryParams = zod.object({
   "archived": zod.coerce.boolean().optional()
 })

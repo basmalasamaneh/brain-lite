@@ -180,13 +180,20 @@ router.delete("/brain/data", async (req, res): Promise<void> => {
       }
     }
     await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${userId},768006))`);
+      await tx.execute(sql`DELETE FROM push_subscriptions WHERE user_id=${userId}`);
+      await tx.execute(sql`DELETE FROM reminders WHERE user_id=${userId}`);
+      await tx.execute(sql`DELETE FROM reminder_recompute_jobs WHERE user_id=${userId}`);
+      await tx.execute(sql`DELETE FROM notifications WHERE user_id=${userId}`);
+      await tx.execute(sql`DELETE FROM notification_daily_ledger WHERE user_id=${userId}`);
+      await tx.execute(sql`DELETE FROM notification_suggestion_claims WHERE user_id=${userId}`);
       await tx.delete(spacesTable).where(eq(spacesTable.userId, userId));
       await tx.execute(sql`DELETE FROM space_creation_suggestions WHERE user_id=${userId}`);
       await tx.delete(memoriesTable).where(eq(memoriesTable.userId, userId));
       await tx.delete(uploadsTable).where(eq(uploadsTable.userId, userId));
     });
     res.json(DeleteBrainDataResponse.parse({
-      deleted: true, scope: "Your memories, Spaces, suggestions, profiles and owned uploads/files were deleted. Your account and login remain active.",
+      deleted: true, scope: "Your memories, Spaces, suggestions, profiles, owned uploads/files, push subscriptions, reminders and notifications were deleted. Your account and login remain active.",
     }));
   } catch (error) {
     req.log.error({ errorName: error instanceof Error ? error.name : "Error" }, "Personal data deletion partially failed");

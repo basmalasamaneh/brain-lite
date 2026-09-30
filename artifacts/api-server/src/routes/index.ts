@@ -8,6 +8,7 @@ import voiceRouter from "./voice";
 import semanticRouter from "./semantic";
 import connectionsRouter from "./connections";
 import spacesRouter from "./spaces";
+import notificationsRouter from "./notifications";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use(voiceRouter);
 router.use(semanticRouter);
 router.use(connectionsRouter);
 router.use(spacesRouter);
+router.use(notificationsRouter);
 
 export default router;

@@ -1,0 +1,37 @@
+Add a Reminders and Notifications system to Brain Lite. This app is MOBILE-FIRST and installed as a PWA. Do not break any existing feature, and keep the gold design system, EN/AR RTL, auth, per-user data isolation, embeddings, Connect the Dots, and Spaces exactly as they are.
+
+DATABASE (safe migration):
+- Table `notification_settings` (user_id PK FK ON DELETE CASCADE, timezone, push_enabled, email_enabled, daily_brief_enabled, daily_brief_time default '08:00', quiet_hours_start default '22:00', quiet_hours_end default '07:00', remind_appointments, remind_tasks, remind_expiries, remind_suggestions booleans default true, default_lead_days int[] default {7,1}).
+- Table `push_subscriptions` (id, user_id FK ON DELETE CASCADE, endpoint unique, p256dh, auth, user_agent, created_at, last_used_at).
+- Table `reminders` (id, user_id FK ON DELETE CASCADE, memory_id FK ON DELETE CASCADE, kind [appointment|task|expiry|custom], fire_at timestamptz, status [pending|sent|snoozed|done|dismissed], sent_at, created_at). Unique per (memory_id, kind, fire_at) so nothing is ever sent twice.
+- Table `notifications` (id, user_id, title, body, url, kind, read boolean, created_at) as the in-app notification center.
+
+GENERATING REMINDERS (backend):
+- Automatically create reminders from memory data: appointments (1 day before and 2 hours before, plus the morning of), tasks with deadlines (1 day before and on the day), and expiries such as warranties, subscriptions, passports and contracts found in the memory's extra data (use default_lead_days, e.g. 7 days and 1 day before). Recompute pending reminders whenever a memory's date is edited or the memory is deleted.
+- Per-memory override: on the memory detail page the user can set "Remind me" (none / custom lead times / a specific date and time).
+- Store times in UTC and always compute using the user's timezone (send it from the client and let it be edited in Settings).
+- Respect quiet hours: a reminder due during quiet hours is delivered when they end, except appointments within 2 hours.
+
+DELIVERY:
+- Web Push with the `web-push` library and VAPID keys. Read VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY and VAPID_SUBJECT from Replit Secrets (tell me how to generate them). Add the push handler to the existing service worker with the gold app icon, title, body, and action buttons: "Done" and "Snooze 1h". Clicking opens the related memory (deep link).
+- Remove subscriptions automatically when the push service returns 404/410.
+- Optional email fallback only if email_enabled: use Resend via RESEND_API_KEY from Secrets, skip silently if the key is missing. Include an unsubscribe link.
+- Scheduler: an in-process job that runs every minute, selects due pending reminders (using row locking such as FOR UPDATE SKIP LOCKED so two instances never double-send), sends them, and marks them sent. Also expose a protected endpoint POST /api/cron/tick secured by a CRON_SECRET so an external scheduler can trigger it if the server sleeps. Tell me which deployment type to use so the scheduler keeps running (Reserved VM or Scheduled Deployment, not a sleeping Autoscale), and what to set up.
+- Daily Brief push: at daily_brief_time send one notification with the rule-based insight sentence (no AI call), for example "2 events today, 1 warranty expiring". Skip it if there's nothing to report.
+- Anti-spam: maximum 6 notifications per user per day, group extra ones into a single summary notification, and never send a Connect the Dots or Space suggestion push more than once a day.
+
+UI (mobile first):
+- Onboarding step and a Settings section "Notifications" with a friendly pre-permission screen that explains what the user will get BEFORE the browser prompt, with "Enable notifications" (gold) and "Not now". Never ask for permission on first page load.
+- iOS: detect iPhone/iPad Safari. If the app is not installed to the Home Screen, show a clear step-by-step guide (Share → Add to Home Screen) since push only works for installed PWAs on iOS. Handle denied permission with a help message.
+- Notification center: a bell icon with an unread badge in the Home header opens a full-screen list grouped by Today / Earlier, with swipe to dismiss, tap to open the memory, and "Mark all as read".
+- Home: a "Reminders" card for what's due today and tomorrow, with large Done and Snooze buttons (Snooze options: 1 hour, tomorrow morning, next week).
+- Settings controls: toggles per category, daily brief time picker, quiet hours pickers, timezone selector, default lead days chips (1, 3, 7, 14, 30), a "Send test notification" button, and a list of connected devices with remove.
+- Everything works at 390px, 44px+ tap targets, safe areas, full RTL, gold shimmer skeletons, toasts, and framer-motion transitions. Notification texts must be written in the user's language (formal, natural Arabic).
+
+SECURITY AND PRIVACY:
+- Every query filters by user_id. Push payloads must contain minimal text; let the user choose "Hide details on lock screen" (shows "You have a reminder" only).
+- Delete all of a user's subscriptions, reminders and notifications on logout of that device, account deletion and "Delete all data".
+
+TESTING:
+- Test with a reminder set for 2 minutes from now, snooze, done, quiet hours, a deleted memory (reminder disappears), two accounts (no cross-delivery), duplicate prevention after a server restart, Arabic and English, and an installed PWA on a real phone.
+Then list what you changed and exactly what I must configure (secrets, deployment type, scheduler).
