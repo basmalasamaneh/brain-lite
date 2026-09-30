@@ -8,6 +8,493 @@
 import * as zod from 'zod';
 
 
+export const getConnectionSuggestionsResponseSuggestionsItemConfidenceMin = 0;
+export const getConnectionSuggestionsResponseSuggestionsItemConfidenceMax = 100;
+
+
+
+export const GetConnectionSuggestionsResponse = zod.object({
+  "suggestions": zod.array(zod.object({
+  "id": zod.number().int(),
+  "memory_a": zod.object({
+  "id": zod.number().int(),
+  "is_sample": zod.boolean(),
+  "type": zod.enum(['appointment', 'receipt', 'task', 'idea', 'document', 'note', 'other']),
+  "title": zod.string(),
+  "summary": zod.string().nullable(),
+  "raw_text": zod.string(),
+  "transcript": zod.string().nullable(),
+  "event_date": zod.string().nullable(),
+  "amount": zod.number().nullable(),
+  "currency": zod.string().nullable(),
+  "people": zod.array(zod.string()),
+  "tags": zod.array(zod.string()),
+  "confidence": zod.number().int(),
+  "status": zod.enum(['confirmed', 'needs_review']),
+  "file_path": zod.string().nullable(),
+  "created_at": zod.string(),
+  "extra": zod.record(zod.string(), zod.unknown()).optional(),
+  "extraction_status": zod.enum(['legacy', 'processing', 'extracted', 'fallback']).optional(),
+  "extraction_error": zod.union([zod.literal(null),zod.literal('not_configured'),zod.literal('unavailable'),zod.literal('invalid_response'),zod.literal('unsupported_file')]).nullish()
+}),
+  "memory_b": zod.object({
+  "id": zod.number().int(),
+  "is_sample": zod.boolean(),
+  "type": zod.enum(['appointment', 'receipt', 'task', 'idea', 'document', 'note', 'other']),
+  "title": zod.string(),
+  "summary": zod.string().nullable(),
+  "raw_text": zod.string(),
+  "transcript": zod.string().nullable(),
+  "event_date": zod.string().nullable(),
+  "amount": zod.number().nullable(),
+  "currency": zod.string().nullable(),
+  "people": zod.array(zod.string()),
+  "tags": zod.array(zod.string()),
+  "confidence": zod.number().int(),
+  "status": zod.enum(['confirmed', 'needs_review']),
+  "file_path": zod.string().nullable(),
+  "created_at": zod.string(),
+  "extra": zod.record(zod.string(), zod.unknown()).optional(),
+  "extraction_status": zod.enum(['legacy', 'processing', 'extracted', 'fallback']).optional(),
+  "extraction_error": zod.union([zod.literal(null),zod.literal('not_configured'),zod.literal('unavailable'),zod.literal('invalid_response'),zod.literal('unsupported_file')]).nullish()
+}),
+  "source": zod.enum(['ai', 'manual']),
+  "status": zod.enum(['suggested', 'confirmed', 'dismissed']),
+  "relation_type": zod.enum(['same_event', 'same_person', 'same_project', 'same_topic', 'follow_up', 'duplicate', 'other']),
+  "reason": zod.string(),
+  "confidence": zod.number().int().min(getConnectionSuggestionsResponseSuggestionsItemConfidenceMin).max(getConnectionSuggestionsResponseSuggestionsItemConfidenceMax),
+  "created_at": zod.coerce.date(),
+  "updated_at": zod.coerce.date()
+}))
+})
+
+
+
+
+
+export const GetMemoryConnectionsParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const getMemoryConnectionsResponseConfirmedItemConfidenceMin = 0;
+export const getMemoryConnectionsResponseConfirmedItemConfidenceMax = 100;
+
+export const getMemoryConnectionsResponseSuggestedItemConfidenceMin = 0;
+export const getMemoryConnectionsResponseSuggestedItemConfidenceMax = 100;
+
+
+
+export const GetMemoryConnectionsResponse = zod.object({
+  "confirmed": zod.array(zod.object({
+  "id": zod.number().int(),
+  "memory_a": zod.object({
+  "id": zod.number().int(),
+  "is_sample": zod.boolean(),
+  "type": zod.enum(['appointment', 'receipt', 'task', 'idea', 'document', 'note', 'other']),
+  "title": zod.string(),
+  "summary": zod.string().nullable(),
+  "raw_text": zod.string(),
+  "transcript": zod.string().nullable(),
+  "event_date": zod.string().nullable(),
+  "amount": zod.number().nullable(),
+  "currency": zod.string().nullable(),
+  "people": zod.array(zod.string()),
+  "tags": zod.array(zod.string()),
+  "confidence": zod.number().int(),
+  "status": zod.enum(['confirmed', 'needs_review']),
+  "file_path": zod.string().nullable(),
+  "created_at": zod.string(),
+  "extra": zod.record(zod.string(), zod.unknown()).optional(),
+  "extraction_status": zod.enum(['legacy', 'processing', 'extracted', 'fallback']).optional(),
+  "extraction_error": zod.union([zod.literal(null),zod.literal('not_configured'),zod.literal('unavailable'),zod.literal('invalid_response'),zod.literal('unsupported_file')]).nullish()
+}),
+  "memory_b": zod.object({
+  "id": zod.number().int(),
+  "is_sample": zod.boolean(),
+  "type": zod.enum(['appointment', 'receipt', 'task', 'idea', 'document', 'note', 'other']),
+  "title": zod.string(),
+  "summary": zod.string().nullable(),
+  "raw_text": zod.string(),
+  "transcript": zod.string().nullable(),
+  "event_date": zod.string().nullable(),
+  "amount": zod.number().nullable(),
+  "currency": zod.string().nullable(),
+  "people": zod.array(zod.string()),
+  "tags": zod.array(zod.string()),
+  "confidence": zod.number().int(),
+  "status": zod.enum(['confirmed', 'needs_review']),
+  "file_path": zod.string().nullable(),
+  "created_at": zod.string(),
+  "extra": zod.record(zod.string(), zod.unknown()).optional(),
+  "extraction_status": zod.enum(['legacy', 'processing', 'extracted', 'fallback']).optional(),
+  "extraction_error": zod.union([zod.literal(null),zod.literal('not_configured'),zod.literal('unavailable'),zod.literal('invalid_response'),zod.literal('unsupported_file')]).nullish()
+}),
+  "source": zod.enum(['ai', 'manual']),
+  "status": zod.enum(['suggested', 'confirmed', 'dismissed']),
+  "relation_type": zod.enum(['same_event', 'same_person', 'same_project', 'same_topic', 'follow_up', 'duplicate', 'other']),
+  "reason": zod.string(),
+  "confidence": zod.number().int().min(getMemoryConnectionsResponseConfirmedItemConfidenceMin).max(getMemoryConnectionsResponseConfirmedItemConfidenceMax),
+  "created_at": zod.coerce.date(),
+  "updated_at": zod.coerce.date()
+})),
+  "suggested": zod.array(zod.object({
+  "id": zod.number().int(),
+  "memory_a": zod.object({
+  "id": zod.number().int(),
+  "is_sample": zod.boolean(),
+  "type": zod.enum(['appointment', 'receipt', 'task', 'idea', 'document', 'note', 'other']),
+  "title": zod.string(),
+  "summary": zod.string().nullable(),
+  "raw_text": zod.string(),
+  "transcript": zod.string().nullable(),
+  "event_date": zod.string().nullable(),
+  "amount": zod.number().nullable(),
+  "currency": zod.string().nullable(),
+  "people": zod.array(zod.string()),
+  "tags": zod.array(zod.string()),
+  "confidence": zod.number().int(),
+  "status": zod.enum(['confirmed', 'needs_review']),
+  "file_path": zod.string().nullable(),
+  "created_at": zod.string(),
+  "extra": zod.record(zod.string(), zod.unknown()).optional(),
+  "extraction_status": zod.enum(['legacy', 'processing', 'extracted', 'fallback']).optional(),
+  "extraction_error": zod.union([zod.literal(null),zod.literal('not_configured'),zod.literal('unavailable'),zod.literal('invalid_response'),zod.literal('unsupported_file')]).nullish()
+}),
+  "memory_b": zod.object({
+  "id": zod.number().int(),
+  "is_sample": zod.boolean(),
+  "type": zod.enum(['appointment', 'receipt', 'task', 'idea', 'document', 'note', 'other']),
+  "title": zod.string(),
+  "summary": zod.string().nullable(),
+  "raw_text": zod.string(),
+  "transcript": zod.string().nullable(),
+  "event_date": zod.string().nullable(),
+  "amount": zod.number().nullable(),
+  "currency": zod.string().nullable(),
+  "people": zod.array(zod.string()),
+  "tags": zod.array(zod.string()),
+  "confidence": zod.number().int(),
+  "status": zod.enum(['confirmed', 'needs_review']),
+  "file_path": zod.string().nullable(),
+  "created_at": zod.string(),
+  "extra": zod.record(zod.string(), zod.unknown()).optional(),
+  "extraction_status": zod.enum(['legacy', 'processing', 'extracted', 'fallback']).optional(),
+  "extraction_error": zod.union([zod.literal(null),zod.literal('not_configured'),zod.literal('unavailable'),zod.literal('invalid_response'),zod.literal('unsupported_file')]).nullish()
+}),
+  "source": zod.enum(['ai', 'manual']),
+  "status": zod.enum(['suggested', 'confirmed', 'dismissed']),
+  "relation_type": zod.enum(['same_event', 'same_person', 'same_project', 'same_topic', 'follow_up', 'duplicate', 'other']),
+  "reason": zod.string(),
+  "confidence": zod.number().int().min(getMemoryConnectionsResponseSuggestedItemConfidenceMin).max(getMemoryConnectionsResponseSuggestedItemConfidenceMax),
+  "created_at": zod.coerce.date(),
+  "updated_at": zod.coerce.date()
+}))
+})
+
+
+
+
+
+export const CreateMemoryConnectionParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+
+export const createMemoryConnectionBodyReasonMax = 1000;
+
+
+
+export const CreateMemoryConnectionBody = zod.object({
+  "other_id": zod.number().int().min(1),
+  "relation_type": zod.enum(['same_event', 'same_person', 'same_project', 'same_topic', 'follow_up', 'duplicate', 'other']).optional(),
+  "reason": zod.string().max(createMemoryConnectionBodyReasonMax).optional()
+})
+
+export const createMemoryConnectionResponseConnectionConfidenceMin = 0;
+export const createMemoryConnectionResponseConnectionConfidenceMax = 100;
+
+
+
+export const CreateMemoryConnectionResponse = zod.object({
+  "connection": zod.object({
+  "id": zod.number().int(),
+  "memory_a": zod.object({
+  "id": zod.number().int(),
+  "is_sample": zod.boolean(),
+  "type": zod.enum(['appointment', 'receipt', 'task', 'idea', 'document', 'note', 'other']),
+  "title": zod.string(),
+  "summary": zod.string().nullable(),
+  "raw_text": zod.string(),
+  "transcript": zod.string().nullable(),
+  "event_date": zod.string().nullable(),
+  "amount": zod.number().nullable(),
+  "currency": zod.string().nullable(),
+  "people": zod.array(zod.string()),
+  "tags": zod.array(zod.string()),
+  "confidence": zod.number().int(),
+  "status": zod.enum(['confirmed', 'needs_review']),
+  "file_path": zod.string().nullable(),
+  "created_at": zod.string(),
+  "extra": zod.record(zod.string(), zod.unknown()).optional(),
+  "extraction_status": zod.enum(['legacy', 'processing', 'extracted', 'fallback']).optional(),
+  "extraction_error": zod.union([zod.literal(null),zod.literal('not_configured'),zod.literal('unavailable'),zod.literal('invalid_response'),zod.literal('unsupported_file')]).nullish()
+}),
+  "memory_b": zod.object({
+  "id": zod.number().int(),
+  "is_sample": zod.boolean(),
+  "type": zod.enum(['appointment', 'receipt', 'task', 'idea', 'document', 'note', 'other']),
+  "title": zod.string(),
+  "summary": zod.string().nullable(),
+  "raw_text": zod.string(),
+  "transcript": zod.string().nullable(),
+  "event_date": zod.string().nullable(),
+  "amount": zod.number().nullable(),
+  "currency": zod.string().nullable(),
+  "people": zod.array(zod.string()),
+  "tags": zod.array(zod.string()),
+  "confidence": zod.number().int(),
+  "status": zod.enum(['confirmed', 'needs_review']),
+  "file_path": zod.string().nullable(),
+  "created_at": zod.string(),
+  "extra": zod.record(zod.string(), zod.unknown()).optional(),
+  "extraction_status": zod.enum(['legacy', 'processing', 'extracted', 'fallback']).optional(),
+  "extraction_error": zod.union([zod.literal(null),zod.literal('not_configured'),zod.literal('unavailable'),zod.literal('invalid_response'),zod.literal('unsupported_file')]).nullish()
+}),
+  "source": zod.enum(['ai', 'manual']),
+  "status": zod.enum(['suggested', 'confirmed', 'dismissed']),
+  "relation_type": zod.enum(['same_event', 'same_person', 'same_project', 'same_topic', 'follow_up', 'duplicate', 'other']),
+  "reason": zod.string(),
+  "confidence": zod.number().int().min(createMemoryConnectionResponseConnectionConfidenceMin).max(createMemoryConnectionResponseConnectionConfidenceMax),
+  "created_at": zod.coerce.date(),
+  "updated_at": zod.coerce.date()
+})
+})
+
+
+
+
+
+export const ConfirmConnectionParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const confirmConnectionResponseConnectionConfidenceMin = 0;
+export const confirmConnectionResponseConnectionConfidenceMax = 100;
+
+
+
+export const ConfirmConnectionResponse = zod.object({
+  "connection": zod.object({
+  "id": zod.number().int(),
+  "memory_a": zod.object({
+  "id": zod.number().int(),
+  "is_sample": zod.boolean(),
+  "type": zod.enum(['appointment', 'receipt', 'task', 'idea', 'document', 'note', 'other']),
+  "title": zod.string(),
+  "summary": zod.string().nullable(),
+  "raw_text": zod.string(),
+  "transcript": zod.string().nullable(),
+  "event_date": zod.string().nullable(),
+  "amount": zod.number().nullable(),
+  "currency": zod.string().nullable(),
+  "people": zod.array(zod.string()),
+  "tags": zod.array(zod.string()),
+  "confidence": zod.number().int(),
+  "status": zod.enum(['confirmed', 'needs_review']),
+  "file_path": zod.string().nullable(),
+  "created_at": zod.string(),
+  "extra": zod.record(zod.string(), zod.unknown()).optional(),
+  "extraction_status": zod.enum(['legacy', 'processing', 'extracted', 'fallback']).optional(),
+  "extraction_error": zod.union([zod.literal(null),zod.literal('not_configured'),zod.literal('unavailable'),zod.literal('invalid_response'),zod.literal('unsupported_file')]).nullish()
+}),
+  "memory_b": zod.object({
+  "id": zod.number().int(),
+  "is_sample": zod.boolean(),
+  "type": zod.enum(['appointment', 'receipt', 'task', 'idea', 'document', 'note', 'other']),
+  "title": zod.string(),
+  "summary": zod.string().nullable(),
+  "raw_text": zod.string(),
+  "transcript": zod.string().nullable(),
+  "event_date": zod.string().nullable(),
+  "amount": zod.number().nullable(),
+  "currency": zod.string().nullable(),
+  "people": zod.array(zod.string()),
+  "tags": zod.array(zod.string()),
+  "confidence": zod.number().int(),
+  "status": zod.enum(['confirmed', 'needs_review']),
+  "file_path": zod.string().nullable(),
+  "created_at": zod.string(),
+  "extra": zod.record(zod.string(), zod.unknown()).optional(),
+  "extraction_status": zod.enum(['legacy', 'processing', 'extracted', 'fallback']).optional(),
+  "extraction_error": zod.union([zod.literal(null),zod.literal('not_configured'),zod.literal('unavailable'),zod.literal('invalid_response'),zod.literal('unsupported_file')]).nullish()
+}),
+  "source": zod.enum(['ai', 'manual']),
+  "status": zod.enum(['suggested', 'confirmed', 'dismissed']),
+  "relation_type": zod.enum(['same_event', 'same_person', 'same_project', 'same_topic', 'follow_up', 'duplicate', 'other']),
+  "reason": zod.string(),
+  "confidence": zod.number().int().min(confirmConnectionResponseConnectionConfidenceMin).max(confirmConnectionResponseConnectionConfidenceMax),
+  "created_at": zod.coerce.date(),
+  "updated_at": zod.coerce.date()
+})
+})
+
+
+
+
+
+export const DismissConnectionParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const dismissConnectionResponseConnectionConfidenceMin = 0;
+export const dismissConnectionResponseConnectionConfidenceMax = 100;
+
+
+
+export const DismissConnectionResponse = zod.object({
+  "connection": zod.object({
+  "id": zod.number().int(),
+  "memory_a": zod.object({
+  "id": zod.number().int(),
+  "is_sample": zod.boolean(),
+  "type": zod.enum(['appointment', 'receipt', 'task', 'idea', 'document', 'note', 'other']),
+  "title": zod.string(),
+  "summary": zod.string().nullable(),
+  "raw_text": zod.string(),
+  "transcript": zod.string().nullable(),
+  "event_date": zod.string().nullable(),
+  "amount": zod.number().nullable(),
+  "currency": zod.string().nullable(),
+  "people": zod.array(zod.string()),
+  "tags": zod.array(zod.string()),
+  "confidence": zod.number().int(),
+  "status": zod.enum(['confirmed', 'needs_review']),
+  "file_path": zod.string().nullable(),
+  "created_at": zod.string(),
+  "extra": zod.record(zod.string(), zod.unknown()).optional(),
+  "extraction_status": zod.enum(['legacy', 'processing', 'extracted', 'fallback']).optional(),
+  "extraction_error": zod.union([zod.literal(null),zod.literal('not_configured'),zod.literal('unavailable'),zod.literal('invalid_response'),zod.literal('unsupported_file')]).nullish()
+}),
+  "memory_b": zod.object({
+  "id": zod.number().int(),
+  "is_sample": zod.boolean(),
+  "type": zod.enum(['appointment', 'receipt', 'task', 'idea', 'document', 'note', 'other']),
+  "title": zod.string(),
+  "summary": zod.string().nullable(),
+  "raw_text": zod.string(),
+  "transcript": zod.string().nullable(),
+  "event_date": zod.string().nullable(),
+  "amount": zod.number().nullable(),
+  "currency": zod.string().nullable(),
+  "people": zod.array(zod.string()),
+  "tags": zod.array(zod.string()),
+  "confidence": zod.number().int(),
+  "status": zod.enum(['confirmed', 'needs_review']),
+  "file_path": zod.string().nullable(),
+  "created_at": zod.string(),
+  "extra": zod.record(zod.string(), zod.unknown()).optional(),
+  "extraction_status": zod.enum(['legacy', 'processing', 'extracted', 'fallback']).optional(),
+  "extraction_error": zod.union([zod.literal(null),zod.literal('not_configured'),zod.literal('unavailable'),zod.literal('invalid_response'),zod.literal('unsupported_file')]).nullish()
+}),
+  "source": zod.enum(['ai', 'manual']),
+  "status": zod.enum(['suggested', 'confirmed', 'dismissed']),
+  "relation_type": zod.enum(['same_event', 'same_person', 'same_project', 'same_topic', 'follow_up', 'duplicate', 'other']),
+  "reason": zod.string(),
+  "confidence": zod.number().int().min(dismissConnectionResponseConnectionConfidenceMin).max(dismissConnectionResponseConnectionConfidenceMax),
+  "created_at": zod.coerce.date(),
+  "updated_at": zod.coerce.date()
+})
+})
+
+
+/**
+ * Sets dismissed permanently; does not remove the pair tombstone.
+ */
+
+
+
+export const RemoveConnectionParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const RemoveConnectionResponse = zod.void()
+
+
+/**
+ * Explicitly confirmed duplicate merge. Keeps selected memory content unchanged and transfers links.
+ */
+
+
+
+export const MergeConnectionParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const MergeConnectionBody = zod.object({
+  "keep_memory_id": zod.number().int().min(1),
+  "confirm": zod.literal(true)
+})
+
+export const MergeConnectionResponse = zod.object({
+  "memory": zod.object({
+  "id": zod.number().int(),
+  "is_sample": zod.boolean(),
+  "type": zod.enum(['appointment', 'receipt', 'task', 'idea', 'document', 'note', 'other']),
+  "title": zod.string(),
+  "summary": zod.string().nullable(),
+  "raw_text": zod.string(),
+  "transcript": zod.string().nullable(),
+  "event_date": zod.string().nullable(),
+  "amount": zod.number().nullable(),
+  "currency": zod.string().nullable(),
+  "people": zod.array(zod.string()),
+  "tags": zod.array(zod.string()),
+  "confidence": zod.number().int(),
+  "status": zod.enum(['confirmed', 'needs_review']),
+  "file_path": zod.string().nullable(),
+  "created_at": zod.string(),
+  "extra": zod.record(zod.string(), zod.unknown()).optional(),
+  "extraction_status": zod.enum(['legacy', 'processing', 'extracted', 'fallback']).optional(),
+  "extraction_error": zod.union([zod.literal(null),zod.literal('not_configured'),zod.literal('unavailable'),zod.literal('invalid_response'),zod.literal('unsupported_file')]).nullish()
+})
+})
+
+
+export const getConnectionSettingsResponseConfirmedCountMin = 0;
+
+
+
+export const GetConnectionSettingsResponse = zod.object({
+  "automatic": zod.boolean(),
+  "confirmed_count": zod.number().int().min(getConnectionSettingsResponseConfirmedCountMin)
+})
+
+
+export const UpdateConnectionSettingsBody = zod.object({
+  "automatic": zod.boolean()
+})
+
+export const updateConnectionSettingsResponseConfirmedCountMin = 0;
+
+
+
+export const UpdateConnectionSettingsResponse = zod.object({
+  "automatic": zod.boolean(),
+  "confirmed_count": zod.number().int().min(updateConnectionSettingsResponseConfirmedCountMin)
+})
+
+
+/**
+ * Queues a background scan immediately, including when automatic discovery is off.
+ */
+export const DiscoverConnectionsResponse = zod.object({
+  "queued": zod.literal(true)
+})
+
+
 /**
  * User-scoped hybrid semantic search, top 8. Embeddings never returned.
  */

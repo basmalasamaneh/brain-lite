@@ -16,3 +16,9 @@ For structured speech extraction, normalize semantically absent optional values 
 **Why:** Real English and Arabic speech produced valid transcripts and separate tasks, but Gemini returned null for an irrelevant currency despite the prompt requesting a string. Rejecting that absence discarded otherwise usable extraction.
 
 **How to apply:** Exercise actual audio in the target languages; allow explicit null/absence only for optional values, and keep incorrect types and invented facts rejected.
+
+Treat high-confidence duplicate labels conservatively; related documents are not necessarily interchangeable.
+
+**Why:** Real connection discovery once labeled a laptop warranty and its receipt as duplicates with high confidence, although an earlier run correctly identified them as related. Confidence alone is not evidence that deleting either preserves the user's information.
+
+**How to apply:** Keep source-specific relationship prompts, deterministic safeguards against distinct-purpose duplicates, and explicit keeper selection plus confirmation before merging. Test receipt/copy and receipt/warranty together.

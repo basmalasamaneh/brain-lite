@@ -119,6 +119,7 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
     },
   });
   await copyFile(path.resolve(artifactDir, "../../lib/db/migrations/0003_semantic_search.sql"), path.join(distDir, "semantic-migration.sql"));
+  await copyFile(path.resolve(artifactDir, "../../lib/db/migrations/0004_connections.sql"), path.join(distDir, "connections-migration.sql"));
 }
 
 buildAll().catch((err) => {

@@ -27,14 +27,23 @@ import type {
   BrainDeletionResult,
   BrainExport,
   BrainQuestion,
+  ConnectionResult,
+  ConnectionSettings,
+  ConnectionSettingsInput,
+  ConnectionSuggestions,
+  CreateConnectionInput,
+  DiscoverConnections202,
   HealthStatus,
   IndexingStatus,
   ListMemoriesParams,
   LoginInput,
   Memory,
+  MemoryConnections,
   MemoryInput,
   MemoryStats,
   MemoryUpdate,
+  MergeConnection200,
+  MergeConnectionInput,
   PasswordInput,
   ProfileInput,
   RelatedMemories,
@@ -75,6 +84,748 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetConnectionSuggestionsUrl = () => {
+
+
+
+
+  return `/api/connections/suggestions`
+}
+
+export const getConnectionSuggestions = async ( options?: Parameters<typeof customFetch>[1]): Promise<ConnectionSuggestions> => {
+
+  return customFetch<ConnectionSuggestions>(getGetConnectionSuggestionsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetConnectionSuggestionsQueryKey = () => {
+    return [
+    `/api/connections/suggestions`
+    ] as const;
+    }
+
+
+export const getGetConnectionSuggestionsQueryOptions = <TData = Awaited<ReturnType<typeof getConnectionSuggestions>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getConnectionSuggestions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetConnectionSuggestionsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getConnectionSuggestions>>> = ({ signal }) => getConnectionSuggestions({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getConnectionSuggestions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetConnectionSuggestionsQueryResult = NonNullable<Awaited<ReturnType<typeof getConnectionSuggestions>>>
+export type GetConnectionSuggestionsQueryError = ErrorType<unknown>
+
+
+
+export function useGetConnectionSuggestions<TData = Awaited<ReturnType<typeof getConnectionSuggestions>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getConnectionSuggestions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetConnectionSuggestionsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetMemoryConnectionsUrl = (id: number,) => {
+
+
+
+
+  return `/api/memories/${id}/connections`
+}
+
+export const getMemoryConnections = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<MemoryConnections> => {
+
+  return customFetch<MemoryConnections>(getGetMemoryConnectionsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMemoryConnectionsQueryKey = (id: number,) => {
+    return [
+    `/api/memories/${id}/connections`
+    ] as const;
+    }
+
+
+export const getGetMemoryConnectionsQueryOptions = <TData = Awaited<ReturnType<typeof getMemoryConnections>>, TError = ErrorType<void>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMemoryConnections>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMemoryConnectionsQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMemoryConnections>>> = ({ signal }) => getMemoryConnections(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMemoryConnections>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMemoryConnectionsQueryResult = NonNullable<Awaited<ReturnType<typeof getMemoryConnections>>>
+export type GetMemoryConnectionsQueryError = ErrorType<void>
+
+
+
+export function useGetMemoryConnections<TData = Awaited<ReturnType<typeof getMemoryConnections>>, TError = ErrorType<void>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMemoryConnections>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMemoryConnectionsQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateMemoryConnectionUrl = (id: number,) => {
+
+
+
+
+  return `/api/memories/${id}/connections`
+}
+
+export const createMemoryConnection = async (id: number,
+    createConnectionInput: CreateConnectionInput, options?: Parameters<typeof customFetch>[1]): Promise<ConnectionResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ConnectionResult>(getCreateMemoryConnectionUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(createConnectionInput)
+  }
+);}
+
+
+
+
+
+export const getCreateMemoryConnectionMutationKey = () => ['createMemoryConnection'] as const;
+
+export const getCreateMemoryConnectionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMemoryConnection>>, TError,CreateMemoryConnectionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createMemoryConnection>>, TError,CreateMemoryConnectionMutationVariables, TContext> => {
+
+const mutationKey = getCreateMemoryConnectionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createMemoryConnection>>, CreateMemoryConnectionMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  createMemoryConnection(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateMemoryConnectionMutationResult = NonNullable<Awaited<ReturnType<typeof createMemoryConnection>>>
+    export type CreateMemoryConnectionMutationBody = BodyType<CreateConnectionInput>
+    export type CreateMemoryConnectionMutationError = ErrorType<void>
+    export type CreateMemoryConnectionMutationVariables = {id: number;data: BodyType<CreateConnectionInput>}
+
+    export const useCreateMemoryConnection = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMemoryConnection>>, TError,CreateMemoryConnectionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createMemoryConnection>>,
+        TError,
+        CreateMemoryConnectionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateMemoryConnectionMutationOptions(options));
+    }
+
+export const getConfirmConnectionUrl = (id: number,) => {
+
+
+
+
+  return `/api/connections/${id}/confirm`
+}
+
+export const confirmConnection = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<ConnectionResult> => {
+
+  return customFetch<ConnectionResult>(getConfirmConnectionUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getConfirmConnectionMutationKey = () => ['confirmConnection'] as const;
+
+export const getConfirmConnectionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmConnection>>, TError,ConfirmConnectionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmConnection>>, TError,ConfirmConnectionMutationVariables, TContext> => {
+
+const mutationKey = getConfirmConnectionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmConnection>>, ConfirmConnectionMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  confirmConnection(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmConnectionMutationResult = NonNullable<Awaited<ReturnType<typeof confirmConnection>>>
+
+    export type ConfirmConnectionMutationError = ErrorType<void>
+    export type ConfirmConnectionMutationVariables = {id: number}
+
+    export const useConfirmConnection = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmConnection>>, TError,ConfirmConnectionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof confirmConnection>>,
+        TError,
+        ConfirmConnectionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getConfirmConnectionMutationOptions(options));
+    }
+
+export const getDismissConnectionUrl = (id: number,) => {
+
+
+
+
+  return `/api/connections/${id}/dismiss`
+}
+
+export const dismissConnection = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<ConnectionResult> => {
+
+  return customFetch<ConnectionResult>(getDismissConnectionUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getDismissConnectionMutationKey = () => ['dismissConnection'] as const;
+
+export const getDismissConnectionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof dismissConnection>>, TError,DismissConnectionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof dismissConnection>>, TError,DismissConnectionMutationVariables, TContext> => {
+
+const mutationKey = getDismissConnectionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof dismissConnection>>, DismissConnectionMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  dismissConnection(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DismissConnectionMutationResult = NonNullable<Awaited<ReturnType<typeof dismissConnection>>>
+
+    export type DismissConnectionMutationError = ErrorType<unknown>
+    export type DismissConnectionMutationVariables = {id: number}
+
+    export const useDismissConnection = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof dismissConnection>>, TError,DismissConnectionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof dismissConnection>>,
+        TError,
+        DismissConnectionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDismissConnectionMutationOptions(options));
+    }
+
+export const getRemoveConnectionUrl = (id: number,) => {
+
+
+
+
+  return `/api/connections/${id}`
+}
+
+/**
+ * Sets dismissed permanently; does not remove the pair tombstone.
+ */
+export const removeConnection = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getRemoveConnectionUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getRemoveConnectionMutationKey = () => ['removeConnection'] as const;
+
+export const getRemoveConnectionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeConnection>>, TError,RemoveConnectionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof removeConnection>>, TError,RemoveConnectionMutationVariables, TContext> => {
+
+const mutationKey = getRemoveConnectionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeConnection>>, RemoveConnectionMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  removeConnection(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemoveConnectionMutationResult = NonNullable<Awaited<ReturnType<typeof removeConnection>>>
+
+    export type RemoveConnectionMutationError = ErrorType<unknown>
+    export type RemoveConnectionMutationVariables = {id: number}
+
+    export const useRemoveConnection = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeConnection>>, TError,RemoveConnectionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof removeConnection>>,
+        TError,
+        RemoveConnectionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRemoveConnectionMutationOptions(options));
+    }
+
+export const getMergeConnectionUrl = (id: number,) => {
+
+
+
+
+  return `/api/connections/${id}/merge`
+}
+
+/**
+ * Explicitly confirmed duplicate merge. Keeps selected memory content unchanged and transfers links.
+ */
+export const mergeConnection = async (id: number,
+    mergeConnectionInput: MergeConnectionInput, options?: Parameters<typeof customFetch>[1]): Promise<MergeConnection200> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<MergeConnection200>(getMergeConnectionUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(mergeConnectionInput)
+  }
+);}
+
+
+
+
+
+export const getMergeConnectionMutationKey = () => ['mergeConnection'] as const;
+
+export const getMergeConnectionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof mergeConnection>>, TError,MergeConnectionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof mergeConnection>>, TError,MergeConnectionMutationVariables, TContext> => {
+
+const mutationKey = getMergeConnectionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof mergeConnection>>, MergeConnectionMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  mergeConnection(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MergeConnectionMutationResult = NonNullable<Awaited<ReturnType<typeof mergeConnection>>>
+    export type MergeConnectionMutationBody = BodyType<MergeConnectionInput>
+    export type MergeConnectionMutationError = ErrorType<void>
+    export type MergeConnectionMutationVariables = {id: number;data: BodyType<MergeConnectionInput>}
+
+    export const useMergeConnection = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof mergeConnection>>, TError,MergeConnectionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof mergeConnection>>,
+        TError,
+        MergeConnectionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getMergeConnectionMutationOptions(options));
+    }
+
+export const getGetConnectionSettingsUrl = () => {
+
+
+
+
+  return `/api/connections/settings`
+}
+
+export const getConnectionSettings = async ( options?: Parameters<typeof customFetch>[1]): Promise<ConnectionSettings> => {
+
+  return customFetch<ConnectionSettings>(getGetConnectionSettingsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetConnectionSettingsQueryKey = () => {
+    return [
+    `/api/connections/settings`
+    ] as const;
+    }
+
+
+export const getGetConnectionSettingsQueryOptions = <TData = Awaited<ReturnType<typeof getConnectionSettings>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getConnectionSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetConnectionSettingsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getConnectionSettings>>> = ({ signal }) => getConnectionSettings({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getConnectionSettings>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetConnectionSettingsQueryResult = NonNullable<Awaited<ReturnType<typeof getConnectionSettings>>>
+export type GetConnectionSettingsQueryError = ErrorType<unknown>
+
+
+
+export function useGetConnectionSettings<TData = Awaited<ReturnType<typeof getConnectionSettings>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getConnectionSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetConnectionSettingsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateConnectionSettingsUrl = () => {
+
+
+
+
+  return `/api/connections/settings`
+}
+
+export const updateConnectionSettings = async (connectionSettingsInput: ConnectionSettingsInput, options?: Parameters<typeof customFetch>[1]): Promise<ConnectionSettings> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ConnectionSettings>(getUpdateConnectionSettingsUrl(),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(connectionSettingsInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateConnectionSettingsMutationKey = () => ['updateConnectionSettings'] as const;
+
+export const getUpdateConnectionSettingsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateConnectionSettings>>, TError,UpdateConnectionSettingsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateConnectionSettings>>, TError,UpdateConnectionSettingsMutationVariables, TContext> => {
+
+const mutationKey = getUpdateConnectionSettingsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateConnectionSettings>>, UpdateConnectionSettingsMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateConnectionSettings(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateConnectionSettingsMutationResult = NonNullable<Awaited<ReturnType<typeof updateConnectionSettings>>>
+    export type UpdateConnectionSettingsMutationBody = BodyType<ConnectionSettingsInput>
+    export type UpdateConnectionSettingsMutationError = ErrorType<unknown>
+    export type UpdateConnectionSettingsMutationVariables = {data: BodyType<ConnectionSettingsInput>}
+
+    export const useUpdateConnectionSettings = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateConnectionSettings>>, TError,UpdateConnectionSettingsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateConnectionSettings>>,
+        TError,
+        UpdateConnectionSettingsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateConnectionSettingsMutationOptions(options));
+    }
+
+export const getDiscoverConnectionsUrl = () => {
+
+
+
+
+  return `/api/connections/discover`
+}
+
+/**
+ * Queues a background scan immediately, including when automatic discovery is off.
+ */
+export const discoverConnections = async ( options?: Parameters<typeof customFetch>[1]): Promise<DiscoverConnections202> => {
+
+  return customFetch<DiscoverConnections202>(getDiscoverConnectionsUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getDiscoverConnectionsMutationKey = () => ['discoverConnections'] as const;
+
+export const getDiscoverConnectionsMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof discoverConnections>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof discoverConnections>>, TError,void, TContext> => {
+
+const mutationKey = getDiscoverConnectionsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof discoverConnections>>, void> = () => {
+
+
+          return  discoverConnections(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DiscoverConnectionsMutationResult = NonNullable<Awaited<ReturnType<typeof discoverConnections>>>
+
+    export type DiscoverConnectionsMutationError = ErrorType<void>
+
+
+    export const useDiscoverConnections = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof discoverConnections>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof discoverConnections>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getDiscoverConnectionsMutationOptions(options));
+    }
 
 export const getSearchRelatedUrl = (params: SearchRelatedParams,) => {
   const normalizedParams = new URLSearchParams();

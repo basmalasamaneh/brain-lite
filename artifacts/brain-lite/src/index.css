@@ -353,6 +353,12 @@ html[lang='ar'] .eyebrow { letter-spacing: 0; text-transform: none; font-size: .
 
 /* ============ SKELETON SHIMMER (gold) ============ */
 .skeleton { position: relative; overflow: hidden; background: hsl(var(--gold-soft)); border-radius: .75rem; }
+.connection-link { animation: connection-glow 2.4s ease-in-out infinite; }
+@keyframes connection-glow { 50% { transform: scale(1.15); filter: drop-shadow(0 0 5px hsl(var(--gold-400) / .6)); } }
+.connection-sheet > button[aria-label],
+.connection-sheet > button.absolute { inset-inline-end: .75rem; inset-inline-start: auto; min-width: 44px; min-height: 44px; }
+[dir='rtl'] .connection-sheet > button.absolute { right: auto; }
+@media (prefers-reduced-motion: reduce) { .connection-link { animation: none; } }
 .skeleton::after { content: ''; position: absolute; inset: 0; transform: translateX(-100%);
   background: linear-gradient(90deg, transparent, hsl(var(--gold-300) / .35), transparent); animation: shimmer 1.6s ease-in-out infinite; }
 @keyframes shimmer { to { transform: translateX(100%); } }

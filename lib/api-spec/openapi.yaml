@@ -11,6 +11,131 @@ tags:
   - name: health
     description: Health operations
 paths:
+  /connections/suggestions:
+    get:
+      operationId: getConnectionSuggestions
+      responses:
+        "200":
+          description: Pending owned connections
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ConnectionSuggestions"}
+  /memories/{id}/connections:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: integer, minimum: 1}}
+    get:
+      operationId: getMemoryConnections
+      responses:
+        "200":
+          description: Confirmed and suggested owned connections
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/MemoryConnections"}
+        "404": {description: Memory not found}
+    post:
+      operationId: createMemoryConnection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/CreateConnectionInput"}
+      responses:
+        "201":
+          description: Manual confirmed connection
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ConnectionResult"}
+        "409": {description: Dismissed pairs are terminal}
+  /connections/{id}/confirm:
+    post:
+      operationId: confirmConnection
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, minimum: 1}}
+      responses:
+        "200":
+          description: Confirmed connection
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ConnectionResult"}
+        "409": {description: Dismissed pairs are terminal}
+  /connections/{id}/dismiss:
+    post:
+      operationId: dismissConnection
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, minimum: 1}}
+      responses:
+        "200":
+          description: Dismissed connection
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ConnectionResult"}
+  /connections/{id}:
+    delete:
+      operationId: removeConnection
+      description: Sets dismissed permanently; does not remove the pair tombstone.
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, minimum: 1}}
+      responses:
+        "204": {description: Dismissed}
+  /connections/{id}/merge:
+    post:
+      operationId: mergeConnection
+      description: Explicitly confirmed duplicate merge. Keeps selected memory content unchanged and transfers links.
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, minimum: 1}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/MergeConnectionInput"}
+      responses:
+        "200":
+          description: Retained memory
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [memory]
+                properties:
+                  memory: {$ref: "#/components/schemas/Memory"}
+        "409": {description: Not an active duplicate pair}
+  /connections/settings:
+    get:
+      operationId: getConnectionSettings
+      responses:
+        "200":
+          description: Connection preferences and confirmed count
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ConnectionSettings"}
+    patch:
+      operationId: updateConnectionSettings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ConnectionSettingsInput"}
+      responses:
+        "200":
+          description: Updated connection preferences
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ConnectionSettings"}
+  /connections/discover:
+    post:
+      operationId: discoverConnections
+      description: Queues a background scan immediately, including when automatic discovery is off.
+      responses:
+        "202":
+          description: Background discovery queued
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [queued]
+                properties:
+                  queued: {type: boolean, enum: [true]}
+        "429": {description: AI request limit}
   /search/related:
     get:
       operationId: searchRelated
@@ -356,6 +481,72 @@ paths:
                 $ref: "#/components/schemas/HealthStatus"
 components:
   schemas:
+    MergeConnectionInput:
+      type: object
+      additionalProperties: false
+      required: [keep_memory_id, confirm]
+      properties:
+        keep_memory_id: {type: integer, minimum: 1}
+        confirm: {type: boolean, enum: [true]}
+    ConnectionSettingsInput:
+      type: object
+      additionalProperties: false
+      required: [automatic]
+      properties:
+        automatic: {type: boolean}
+    ConnectionSuggestions:
+      type: object
+      required: [suggestions]
+      properties:
+        suggestions:
+          type: array
+          items: {$ref: "#/components/schemas/Connection"}
+    MemoryConnections:
+      type: object
+      required: [confirmed, suggested]
+      properties:
+        confirmed:
+          type: array
+          items: {$ref: "#/components/schemas/Connection"}
+        suggested:
+          type: array
+          items: {$ref: "#/components/schemas/Connection"}
+    ConnectionResult:
+      type: object
+      required: [connection]
+      properties:
+        connection: {$ref: "#/components/schemas/Connection"}
+    ConnectionSettings:
+      type: object
+      required: [automatic, confirmed_count]
+      properties:
+        automatic: {type: boolean}
+        confirmed_count: {type: integer, minimum: 0}
+    RelationType:
+      type: string
+      enum: [same_event, same_person, same_project, same_topic, follow_up, duplicate, other]
+    CreateConnectionInput:
+      type: object
+      additionalProperties: false
+      required: [other_id]
+      properties:
+        other_id: {type: integer, minimum: 1}
+        relation_type: {$ref: "#/components/schemas/RelationType"}
+        reason: {type: string, maxLength: 1000}
+    Connection:
+      type: object
+      required: [id, memory_a, memory_b, source, status, relation_type, reason, confidence, created_at, updated_at]
+      properties:
+        id: {type: integer}
+        memory_a: {$ref: "#/components/schemas/Memory"}
+        memory_b: {$ref: "#/components/schemas/Memory"}
+        source: {type: string, enum: [ai, manual]}
+        status: {type: string, enum: [suggested, confirmed, dismissed]}
+        relation_type: {$ref: "#/components/schemas/RelationType"}
+        reason: {type: string}
+        confidence: {type: integer, minimum: 0, maximum: 100}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
     VoiceTranscript:
       type: object
       required: [transcript]

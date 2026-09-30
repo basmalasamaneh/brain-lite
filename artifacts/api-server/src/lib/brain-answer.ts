@@ -64,6 +64,8 @@ Honor structured_sql.scope exactly: a total applies ONLY to its declared date, t
 merchant/category qualifier scope. Never describe an unqualified overall total as spending
 on a category or at a merchant. If the question asks for facts or qualifiers not established
 by that scope and its records, say you cannot establish that total rather than reuse it.
+Records may include one-hop confirmed connected context outside the aggregate scope;
+these provide context ONLY, never add them to structured_sql totals or counts or widen its scope.
 Do not invent people, dates, amounts, events, or details. If no records establish an answer,
 return an empty source_ids array and an honest no-information answer.
 Answer in the language specified by the user (en English, ar Arabic).

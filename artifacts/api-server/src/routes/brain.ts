@@ -7,6 +7,7 @@ import { activeCaptures, activeQuestions as activeUserQuestions, activeUploadReq
 import rateLimit from "express-rate-limit";
 import { publicMemory, retrieveForQuestion } from "../lib/semantic-search";
 import { validTimezone } from "../lib/semantic-utils";
+import { confirmedOneHop } from "../lib/connections";
 import {
   generateGroundedAnswer, noDataAnswer, parseGroundedAnswer, prepareContext,
   type CompactMemory,
@@ -51,7 +52,10 @@ router.post("/brain/ask", askLimiter, async (req, res): Promise<void> => {
   activeUserQuestions.set(req.user!.id, (activeUserQuestions.get(req.user!.id) ?? 0) + 1);
   try {
     const { question, language, timezone = "UTC" } = parsed.data;
-    const { related, aggregate } = await retrieveForQuestion(req.user!.id, question, timezone);
+    const retrieved = await retrieveForQuestion(req.user!.id, question, timezone);
+    const aggregate = retrieved.aggregate;
+    const connected = await confirmedOneHop(req.user!.id, retrieved.related.map(({ memory }) => memory.id));
+    const related = [...retrieved.related, ...connected.map((memory) => ({ memory, relevance: 0 }))];
     const compact = related.map(({ memory: row }) => ({
       id: row.id, type: row.type, title: row.title, summary: row.summary,
       date: row.event_date, amount: row.amount, currency: row.currency,

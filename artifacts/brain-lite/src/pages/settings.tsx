@@ -16,6 +16,7 @@ import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescript
 import { cn } from '@/lib/utils';
 import { useIndexStatus, useReindex } from '@/hooks/use-semantic-search';
 import { searchText } from '@/lib/i18n-search';
+import { ConnectionSettingsSection } from '@/components/connections';
 
 // API is mounted at /api on the same origin (not under the web base path).
 const EXPORT_URL = '/api/brain/export';
@@ -73,7 +74,7 @@ export default function SettingsPage() {
     del.mutate({ data: { confirmation: 'DELETE' } }, {
       onSuccess: () => {
         askSession.clear();
-        qc.removeQueries({ predicate: (q) => ['/api/memories', '/api/brain', '/api/search', '/api/indexing'].some((prefix) => String(q.queryKey[0] ?? '').startsWith(prefix)) });
+        qc.removeQueries({ predicate: (q) => ['/api/memories', '/api/brain', '/api/search', '/api/indexing', '/api/connections', '/local/connections'].some((prefix) => String(q.queryKey[0] ?? '').startsWith(prefix)) });
         qc.invalidateQueries();
         setOpen(false); setTyped('');
         toast({ title: t('deleteAllDone') });
@@ -87,6 +88,7 @@ export default function SettingsPage() {
       <PageHeader eyebrow={t('settingsEyebrow')} title={t('settingsTitle')} lead={t('settingsLead')} />
       <div className="space-y-4">
         <AccountSection />
+        {isAuthenticated && <ConnectionSettingsSection />}
         {isAuthenticated && <IndexingSection />}
         <Section icon={Palette} title={t('appearance')}>
           <p className="mb-2 text-sm font-medium">{t('theme')}</p>

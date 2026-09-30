@@ -13,6 +13,7 @@ import { IconCircle, OrnamentDivider } from '@/components/brand';
 import { cn } from '@/lib/utils';
 import { voiceText } from '@/lib/i18n-voice';
 import { SimilarMemories } from '@/components/semantic-memories';
+import { MemoryConnections } from '@/components/connections';
 
 type Draft = { title: string; raw_text: string; transcript: string; summary: string; type: MemoryType; status: MemoryStatus; date: string; time: string; amount: string; currency: string; people: string; tags: string; extra: string };
 
@@ -254,6 +255,7 @@ export default function MemoryDetailPage() {
         </div>
       )}
 
+      {!draft && isAuthenticated && <MemoryConnections key={id} id={id} />}
       {!draft && isAuthenticated && <SimilarMemories id={id} />}
       <AlertDialog open={confirmOpen} onOpenChange={(o) => { if (!del.isPending) setConfirmOpen(o); }}>
         <AlertDialogContent className="rounded-2xl">

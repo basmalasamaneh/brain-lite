@@ -10,6 +10,7 @@ import { ErrorState, InfoTip, Skeleton, Surface, TypeIcon, btnPrimary } from '@/
 import { CornerFlourishes, IconCircle, OrnamentDivider } from '@/components/brand';
 import { CountUp, Stagger, StaggerItem } from '@/components/motion';
 import { cn } from '@/lib/utils';
+import { ConnectionDeck } from '@/components/connections';
 
 function useLocaleFmt() {
   const { lang, t } = useI18n();
@@ -136,6 +137,7 @@ export function DailyBriefSection() {
         </div>
       </div>
 
+      <ConnectionDeck />
       <OrnamentDivider className="py-2" />
 
       <Stagger className="grid grid-cols-1 gap-4 md:grid-cols-2">

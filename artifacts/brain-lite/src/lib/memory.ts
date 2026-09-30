@@ -42,7 +42,10 @@ export function useInvalidateMemories() {
     const listKey = String(getListMemoriesQueryKey()[0]);
     qc.invalidateQueries({ predicate: (q) => String(q.queryKey[0] ?? '').startsWith(listKey) });
     qc.invalidateQueries({ queryKey: getGetMemoryStatsQueryKey() });
-    qc.invalidateQueries({ predicate: (q) => String(q.queryKey[0] ?? '').startsWith('/api/search') || String(q.queryKey[0] ?? '').startsWith('/api/indexing') });
+    qc.invalidateQueries({ predicate: (q) => {
+      const key = String(q.queryKey[0] ?? '');
+      return key.startsWith('/api/search') || key.startsWith('/api/indexing') || key.startsWith('/api/connections') || key.endsWith('/connections') || key.endsWith('/similar');
+    } });
     if (id != null) qc.invalidateQueries({ queryKey: getGetMemoryQueryKey(id) });
   };
 }

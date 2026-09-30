@@ -7,6 +7,7 @@ import { pool } from "@workspace/db";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { authMiddleware } from "./middlewares/authMiddleware";
+import { aiBudgetMiddleware } from "./lib/ai-budget";
 
 const app: Express = express();
 const sessionSecret = process.env.SESSION_SECRET;
@@ -81,6 +82,6 @@ app.use("/api", (req, res, next) => {
   authMiddleware(req, res, next);
 });
 
-app.use("/api", router);
+app.use("/api", aiBudgetMiddleware, router);
 
 export default app;

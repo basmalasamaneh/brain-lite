@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp, doublePrecision, jsonb, varchar, boolean } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, doublePrecision, jsonb, varchar, boolean, uniqueIndex } from "drizzle-orm/pg-core";
 import { usersTable } from "./auth";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -24,7 +24,7 @@ export const memoriesTable = pgTable("memories", {
   extraction_status: text("extraction_status", { enum: ["legacy", "processing", "extracted", "fallback"] }).notNull().default("legacy"),
   extraction_error: text("extraction_error", { enum: ["not_configured", "unavailable", "invalid_response", "unsupported_file"] }),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => [uniqueIndex("memories_owner_identity").on(table.userId, table.id)]);
 
 export const insertMemorySchema = createInsertSchema(memoriesTable).omit({ id: true, created_at: true });
 export type InsertMemory = z.infer<typeof insertMemorySchema>;

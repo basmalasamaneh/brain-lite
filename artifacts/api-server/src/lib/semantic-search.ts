@@ -6,12 +6,14 @@ import { and, eq, inArray } from "drizzle-orm";
 import { GetMemoryResponse } from "@workspace/api-zod";
 import { logger } from "./logger";
 import { providerDiagnostic } from "./gemini-provider";
+import { reserveAiBudget } from "./ai-budget";
 import { buildEmbeddingText, cosine, EMBEDDING_DIMENSIONS, exactBoost, retryDelay, SIMILARITY_THRESHOLD, structuredIntent } from "./semantic-utils";
 
 type Memory = typeof memoriesTable.$inferSelect;
 export type RankedMemory = { memory: Memory; relevance: number };
 export type SearchFilters = { type?: string; date_from?: string; date_to?: string; timezone?: string };
 let mode: "pgvector" | "double_precision_array" = "double_precision_array";
+export function embeddingStorageMode() { return mode; }
 let initialization: Promise<void> | undefined;
 let workerStarted = false;
 const cache = new Map<string, { vector: number[]; expires: number }>();
@@ -115,6 +117,12 @@ export async function processEmbeddingBatch(): Promise<number> {
     const [memory] = await db.select().from(memoriesTable).where(eq(memoriesTable.id, job.memory_id));
     if (!memory) continue;
     try {
+      if (!await reserveAiBudget(memory.userId, true)) {
+        await pool.query(`UPDATE memory_embedding_jobs SET next_attempt_at=date_trunc('hour',now())+interval '1 hour'+interval '10 seconds',
+          lease_until=NULL,lease_token=NULL WHERE memory_id=$1 AND version=$2 AND lease_token=$3`,
+        [memory.id, job.version, leaseToken]);
+        break;
+      }
       const vector = await embed(buildEmbeddingText(memory), "RETRIEVAL_DOCUMENT");
       // Atomically fence an old task before updating the memory. Lock order
       // matches the memory update trigger (memory first, then job).

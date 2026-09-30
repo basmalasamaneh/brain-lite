@@ -5,25 +5,14 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-export interface VoiceTranscript {
-  transcript: string;
+export interface MergeConnectionInput {
+  /** @minimum 1 */
+  keep_memory_id: number;
+  confirm: true;
 }
 
-export type IndexingStatusMode = typeof IndexingStatusMode[keyof typeof IndexingStatusMode];
-
-
-export const IndexingStatusMode = {
-  pgvector: 'pgvector',
-  double_precision_array: 'double_precision_array',
-} as const;
-
-export interface IndexingStatus {
-  indexed: number;
-  total: number;
-  pending: number;
-  /** Failed attempts waiting for durable retry */
-  failed: number;
-  mode: IndexingStatusMode;
+export interface ConnectionSettingsInput {
+  automatic: boolean;
 }
 
 export type MemoryType = typeof MemoryType[keyof typeof MemoryType];
@@ -99,6 +88,101 @@ export interface Memory {
   extraction_status?: MemoryExtractionStatus;
   /** @nullable */
   extraction_error?: MemoryExtractionError;
+}
+
+export type ConnectionSource = typeof ConnectionSource[keyof typeof ConnectionSource];
+
+
+export const ConnectionSource = {
+  ai: 'ai',
+  manual: 'manual',
+} as const;
+
+export type ConnectionStatus = typeof ConnectionStatus[keyof typeof ConnectionStatus];
+
+
+export const ConnectionStatus = {
+  suggested: 'suggested',
+  confirmed: 'confirmed',
+  dismissed: 'dismissed',
+} as const;
+
+export type RelationType = typeof RelationType[keyof typeof RelationType];
+
+
+export const RelationType = {
+  same_event: 'same_event',
+  same_person: 'same_person',
+  same_project: 'same_project',
+  same_topic: 'same_topic',
+  follow_up: 'follow_up',
+  duplicate: 'duplicate',
+  other: 'other',
+} as const;
+
+export interface Connection {
+  id: number;
+  memory_a: Memory;
+  memory_b: Memory;
+  source: ConnectionSource;
+  status: ConnectionStatus;
+  relation_type: RelationType;
+  reason: string;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  confidence: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ConnectionSuggestions {
+  suggestions: Connection[];
+}
+
+export interface MemoryConnections {
+  confirmed: Connection[];
+  suggested: Connection[];
+}
+
+export interface ConnectionResult {
+  connection: Connection;
+}
+
+export interface ConnectionSettings {
+  automatic: boolean;
+  /** @minimum 0 */
+  confirmed_count: number;
+}
+
+export interface CreateConnectionInput {
+  /** @minimum 1 */
+  other_id: number;
+  relation_type?: RelationType;
+  /** @maxLength 1000 */
+  reason?: string;
+}
+
+export interface VoiceTranscript {
+  transcript: string;
+}
+
+export type IndexingStatusMode = typeof IndexingStatusMode[keyof typeof IndexingStatusMode];
+
+
+export const IndexingStatusMode = {
+  pgvector: 'pgvector',
+  double_precision_array: 'double_precision_array',
+} as const;
+
+export interface IndexingStatus {
+  indexed: number;
+  total: number;
+  pending: number;
+  /** Failed attempts waiting for durable retry */
+  failed: number;
+  mode: IndexingStatusMode;
 }
 
 export type RelatedMemory = Memory & {
@@ -467,6 +551,14 @@ export interface MemoryStats {
 export interface HealthStatus {
   status: string;
 }
+
+export type MergeConnection200 = {
+  memory: Memory;
+};
+
+export type DiscoverConnections202 = {
+  queued: true;
+};
 
 export type SearchRelatedParams = {
 /**

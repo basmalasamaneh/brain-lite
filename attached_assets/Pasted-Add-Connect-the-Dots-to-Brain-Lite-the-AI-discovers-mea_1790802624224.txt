@@ -1,0 +1,30 @@
+Add "Connect the Dots" to Brain Lite: the AI discovers meaningful relationships between a user's memories, suggests them, and the user confirms or dismisses. This app is MOBILE-FIRST. Do not break any existing feature, and keep the gold design system, EN/AR RTL, auth and per-user data isolation exactly as they are.
+
+DATABASE (safe migration):
+- Create table `memory_links` (id, user_id NOT NULL FK ON DELETE CASCADE, memory_a_id, memory_b_id (both FK to memories ON DELETE CASCADE), source [ai|manual], status [suggested|confirmed|dismissed], relation_type [same_event|same_person|same_project|same_topic|follow_up|duplicate|other], reason text, confidence int, created_at, updated_at).
+- Store each pair once (order ids so a < b) with a UNIQUE constraint on (user_id, memory_a_id, memory_b_id). A dismissed pair must NEVER be suggested again.
+- If the app already has manual "Link to another memory", migrate those links into this table as source=manual, status=confirmed.
+
+DISCOVERY (backend, runs in the background, never blocks the user):
+- After a memory is created or edited and its embedding is ready, find its top 6 nearest memories for THIS USER ONLY using the existing embeddings (filter by user_id in the query), above a similarity threshold, excluding existing links and dismissed pairs.
+- Send the new memory plus the candidates to Gemini in ONE call and ask for ONLY valid JSON: { "links": [ { "other_id": "", "relation_type": "", "reason": "one short sentence", "confidence": 0-100 } ] }. Rules in the prompt: only propose a link if there is a real, useful relationship (same event, person, project, topic, follow-up, duplicate), not just similar wording; never invent facts; write the reason in the same language as the memories; return an empty list if nothing is meaningful.
+- Save suggestions with confidence >= 70 as status=suggested. Cap at 3 new suggestions per day per user so it never feels spammy.
+- Detect likely duplicates (same receipt or appointment captured twice) as relation_type=duplicate and offer "Merge" (keep one memory, move the other's links and delete it after confirmation).
+- Add a weekly background job (and a "Find connections" button in Settings) that scans older memories in small batches with delays, respecting Gemini free-tier limits (exponential backoff with jitter on 429).
+- Add a "Forgotten ideas" pass: once a week, pick one idea memory older than 30 days and, if a recent memory (last 14 days) is related, suggest the connection with the reason "You wrote this idea a while ago, and you recently saved something related."
+- Apply the existing AI rate limits. Every query filters by user_id. Never expose another user's memories.
+
+UI (mobile first):
+- Home: a "Possible connection" card near the top of the Daily Brief, with a gold gradient border. It shows both memories as two compact mini-cards with a small animated gold link icon between them, the one-line reason, and three large buttons: Connect (primary gold), Not related (outlined), Later. Support swipe right = Connect, swipe left = Not related, with haptic feedback and animated transitions. If several suggestions exist, show a stacked deck with a counter ("2 of 3").
+- Memory detail: a "Connected memories" section with horizontally scrollable cards showing the relation type chip and the reason. A "Suggested" subsection shows pending suggestions with Connect / Dismiss. Keep a manual "Link a memory" button that opens a searchable bottom sheet (uses the smart search).
+- Every connection has a small "Why?" info button that opens a bottom sheet explaining the reason in one or two sentences and its confidence.
+- Connected memories can be removed with a confirm dialog (removal sets status=dismissed so it doesn't come back).
+- Ask Your Brain: when answering, also pull in memories connected to the retrieved ones (one hop, confirmed links only) so answers include the full context, and show them as sources.
+- Settings: a toggle "Suggest connections automatically" (on by default), a counter of confirmed connections, and "Find connections now".
+- Empty states: friendly copy when there are no suggestions ("Nothing to connect yet. As you save more, I'll find the links for you."). Loading states with gold shimmer, toasts on every action.
+- Everything works at 390px with no horizontal scroll, 44px+ tap targets, safe-area aware bottom sheets, and full RTL mirroring (swipe directions mirror too).
+
+TESTING:
+- Seed a test scenario: "Doctor appointment Oct 10", "Blood test results", "Laptop receipt", "Laptop warranty", and two unrelated memories. Verify the right links are suggested, unrelated ones aren't, duplicates are detected, dismissed pairs never return, and two accounts cannot see each other's links.
+- Test Arabic and English, and cross-language pairs.
+Then list what you changed.
