@@ -43,7 +43,7 @@ test("malformed response retries once and succeeds with unchanged request", asyn
   let calls = 0;
   const transport: ExtractionTransport = async (request) => {
     calls++;
-    assert.equal(request.model, process.env.GEMINI_MODEL || "gemini-3.8-flash");
+    assert.equal(request.model, process.env.GEMINI_MODEL || "gemini-3.1-flash-lite");
     assert.equal(request.max_tokens, 8192);
     assert.equal(request.messages[0].content[0].type, "text");
     return { content: [{ type: "text", text: calls === 1 ? "{bad" : JSON.stringify(valid) }] };
@@ -80,12 +80,12 @@ test("two invalid responses never cause a third API call", async () => {
   assert.equal(calls, 2);
 });
 
-test("API errors are unavailable and bounded to two calls", async () => {
+test("non-transient transport errors are unavailable without a duplicate call", async () => {
   let calls = 0;
   assert.deepEqual(await extractMemoryWithDependencies({ rawText: "" }, {
     ...deps, transport: async () => { calls++; throw new Error("private error"); },
   }), { ok: false, reason: "unavailable" });
-  assert.equal(calls, 2);
+  assert.equal(calls, 1);
 });
 
 test("strict schema rejects coercion, unknown keys, invalid dates, and oversized extra", () => {

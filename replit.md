@@ -12,7 +12,7 @@ A bilingual, mobile-first personal second brain for capturing text, photos, and 
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - Required env: `DATABASE_URL` — Postgres connection string
 - `GEMINI_API_KEY` — set only through Secrets; missing key saves an explicitly labeled plain-note fallback.
-- `GEMINI_MODEL` — configurable Gemini model, defaults to `gemini-3.8-flash`.
+- `GEMINI_MODEL` — configurable Gemini model, defaults to `gemini-3.1-flash-lite`. Verify both structured capture extraction and grounded Ask with synthetic content before switching models; a model listing alone does not establish usability.
 
 ## Stack
 

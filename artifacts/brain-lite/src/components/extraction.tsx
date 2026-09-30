@@ -92,7 +92,7 @@ export function ExtractionBanner({ m, canEdit, onConfirm, onChange, confirming }
         <p className="flex items-center gap-2 font-semibold text-warning-ink"><AlertTriangle className="h-4 w-4" />{t('fallbackTitle')}</p>
         <p className="mt-1 font-medium" data-testid="text-fallback-reason">{t(reason)}</p>
         <p className="mt-0.5 text-muted-foreground">{t('fallbackSaved')}</p>
-        <div className="mt-3 max-w-xs"><ConfidenceMeter value={m.confidence} /></div>
+        <p className="mt-3 font-medium" data-testid="text-not-analyzed">{t('notAnalyzed')}</p>
         {m.status === 'needs_review' ? (
           <>
             <p className="mt-2 text-muted-foreground">{t('fallbackReview')}</p>

@@ -1,5 +1,5 @@
-import { GoogleGenAI } from "@google/genai";
 import { z } from "zod";
+import { geminiModel, generateGeminiContent } from "./gemini-provider";
 
 export type CompactMemory = {
   id: number;
@@ -65,25 +65,13 @@ export async function generateGroundedAnswer(
   language: "en" | "ar",
   context: string,
   apiKey: string,
+  model: string = geminiModel(),
 ): Promise<string> {
-  const client = new GoogleGenAI({
-    apiKey,
-    httpOptions: { timeout: 15_000, retryOptions: { attempts: 1 } },
+  const text = await generateGeminiContent(apiKey, {
+    model,
+    contents: [{ role: "user", parts: [{ text: JSON.stringify({ question, language, memories: JSON.parse(context) }) }] }],
+    config: { systemInstruction: SYSTEM_PROMPT, responseMimeType: "application/json", maxOutputTokens: 8192 },
   });
-  let lastError: unknown;
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const response = await client.models.generateContent({
-        model: process.env.GEMINI_MODEL || "gemini-3.8-flash",
-        contents: [{ role: "user", parts: [{ text: JSON.stringify({ question, language, memories: JSON.parse(context) }) }] }],
-        config: { systemInstruction: SYSTEM_PROMPT, responseMimeType: "application/json", maxOutputTokens: 8192 },
-      });
-      if (response.text) return response.text;
-      lastError = new Error("EMPTY_ANSWER");
-    } catch (error) {
-      lastError = error;
-    }
-    if (attempt === 0) await new Promise((resolve) => setTimeout(resolve, 250));
-  }
-  throw lastError ?? new Error("ANSWER_UNAVAILABLE");
+  if (!text) throw new Error("EMPTY_ANSWER");
+  return text;
 }

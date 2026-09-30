@@ -1,6 +1,7 @@
-import { GoogleGenAI, type GenerateContentParameters } from "@google/genai";
+import type { GenerateContentParameters } from "@google/genai";
 import sharp from "sharp";
 import { z } from "zod";
+import { geminiModel, generateGeminiContent } from "./gemini-provider";
 
 export type ExtractionInput = {
   rawText: string;
@@ -174,18 +175,14 @@ export async function extractMemoryWithDependencies(input: ExtractionInput, depe
   ];
   if (block) content.push(block);
   const request: ExtractionRequest = {
-    model: process.env.GEMINI_MODEL || "gemini-3.8-flash",
+    model: geminiModel(),
     max_tokens: 8192,
     system: extractionPrompt(input, dependencies.now),
     messages: [{ role: "user", content }],
   };
   const transport: ExtractionTransport = dependencies.transport ?? (async (payload) => {
-    const client = new GoogleGenAI({
-      apiKey: dependencies.apiKey,
-      httpOptions: { timeout: 20_000, retryOptions: { attempts: 1 } },
-    });
-    const response = await client.models.generateContent(toGeminiRequest(payload));
-    return { content: [{ type: "text", text: response.text ?? "" }] };
+    const text = await generateGeminiContent(dependencies.apiKey!, toGeminiRequest(payload), dependencies.sleep);
+    return { content: [{ type: "text", text }] };
   });
   let reason: "unavailable" | "invalid_response" = "invalid_response";
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -196,7 +193,8 @@ export async function extractMemoryWithDependencies(input: ExtractionInput, depe
       if (data) return { ok: true, data };
       reason = "invalid_response";
     } catch {
-      reason = "unavailable";
+      // Provider failures are retried only when transient, inside generateGeminiContent.
+      return { ok: false, reason: "unavailable" };
     }
     if (attempt === 0) await (dependencies.sleep ?? ((ms) => new Promise<void>((resolve) => setTimeout(resolve, ms))))(250);
   }
