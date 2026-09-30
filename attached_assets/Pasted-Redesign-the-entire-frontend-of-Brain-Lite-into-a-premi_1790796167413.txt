@@ -1,0 +1,55 @@
+Redesign the entire frontend of Brain Lite into a premium, formal, luxurious product with a GOLD theme. This is a VISUAL and UX pass only: do NOT change backend logic, database, API routes, auth, or any existing feature behavior. Everything that works now must keep working. Apply the new design system to every screen (login, signup, onboarding, Home/Daily Brief, Capture, Ask, Memories, Memory detail, Settings).
+
+1) DESIGN TOKENS (define as CSS variables + Tailwind theme, no hardcoded colors elsewhere)
+Light theme (warm ivory):
+- background #FBF8F1, surface #FFFFFF, surface-alt #F5EFE0
+- text #1F1A10, muted text #6F6652, border #E8DFC8
+- gold-500 #B8902F (primary), gold-400 #D4AF37, gold-300 #E8CF7A, gold-700 #8A6A1E
+- gold gradient: linear-gradient(135deg, #8A6A1E, #D4AF37 50%, #F3DE8A)
+Dark theme (luxury black):
+- background #0D0C0A, surface #171510, surface-alt #1F1C15, text #F4EEDD, muted #A39A82, border #2E2A1E, same golds
+Semantic: success #2F8F6B, warning #D98E1F, danger #C2453D. Keep WCAG AA contrast on all text (gold text on light backgrounds must use gold-700, not gold-400).
+
+2) TYPOGRAPHY (formal, elegant, bilingual)
+- English headings: "Cormorant Garamond" (600/700). English body/UI: "Inter".
+- Arabic headings: "Amiri" (or "Noto Naskh Arabic" bold). Arabic body/UI: "IBM Plex Sans Arabic".
+- Switch font stacks automatically by language. Comfortable Arabic line-height (1.8), English 1.6.
+- Clear type scale (display, h1, h2, h3, body, caption). Numbers use tabular figures.
+
+3) ORNAMENTS AND VISUAL IDENTITY (subtle, never cluttered)
+- Create a simple gold logo mark (SVG): a stylized brain/star inside a rounded diamond, plus the wordmark "Brain Lite".
+- Background: a very faint Islamic geometric pattern (8-point star lattice, SVG, 4-6% opacity) on hero areas, login, onboarding, and empty states only.
+- Gold ornamental divider component (thin line with a small centered diamond) to separate sections.
+- Cards: 1px border, rounded-2xl, soft warm shadow; important cards (Daily Brief header, result card) get a thin gold gradient border and small corner flourishes (SVG).
+- Icons: lucide-react with 1.5 stroke, gold-tinted inside soft circular containers.
+- Gold gradient primary buttons with a subtle shine sweep on hover; secondary buttons outlined in gold.
+- Type badges (appointment, receipt, task, idea...) each with a refined icon and a muted color chip that fits the gold palette.
+
+4) ANIMATION (use framer-motion, 150-400ms, eased, purposeful)
+- Page transitions (fade + slight slide), staggered card entrance on lists.
+- Number count-up on dashboard stats, animated confidence meter fill, animated checkmark on successful capture.
+- Shimmer skeletons in gold tones while loading; a graceful "Understanding your memory..." animation (pulsing gold star).
+- Gentle hover lift on cards, press scale on buttons, animated bottom-tab indicator, smooth theme toggle transition.
+- Respect prefers-reduced-motion (disable non-essential animation).
+
+5) LAYOUT AND UX (best possible ease of use)
+- Mobile-first. Bottom tab bar: Home, Memories, a raised gold circular Capture button in the center, Ask, Settings. Desktop: elegant left sidebar (right in RTL) with logo and the same items.
+- Minimum 44px tap targets, thumb-friendly primary actions, sticky bottom action bars on forms.
+- Home: warm greeting with the user's name and a short date line, the insight sentence in a prominent gold-bordered card, then sections with clear headings and ornamental dividers.
+- Capture: make it feel effortless. Large, inviting text area, three big options (Write, Photo/Camera, File), drag-and-drop zone with a clear hover state, and a short friendly hint below. Show progress steps: Capture → Understanding → Saved.
+- Ask: elegant chat UI with suggested question chips, source cards beneath answers, and a clear typing/loading state.
+- Memories: search bar on top, horizontally scrollable filter chips, cards with type icon, title, date and a status dot (confirmed / needs review).
+- Every screen needs: a friendly empty state with an illustration-style ornament and a clear call to action, inline form validation with helpful messages, toast feedback for every action, and confirm dialogs for destructive actions.
+- Add small contextual help: info tooltips and one-line helper text where users might hesitate. Keep copy short, warm, and formal in tone.
+- Accessibility: visible gold focus rings, keyboard navigation, aria-labels, semantic HTML, sufficient contrast.
+
+6) RTL AND LANGUAGE
+- Use logical CSS properties (margin-inline, padding-inline, start/end) so the whole layout mirrors correctly in Arabic. Mirror directional icons and animations (slide directions).
+- Language toggle (EN/AR) and theme toggle (light/dark) reachable from the header/Settings, with smooth transitions. Persist both choices.
+- Write all visible text in both languages with natural, formal Arabic (not literal translation).
+
+7) QUALITY BAR
+- Consistent spacing scale (4/8/12/16/24/32/48), consistent radius and shadows, no leftover old colors (remove all indigo/lavender).
+- Create reusable components (Button, Card, Badge, Divider, EmptyState, Skeleton, Toast, Modal, Input) and use them everywhere.
+- Test every screen in light, dark, English, Arabic (RTL), mobile width (390px) and desktop width. Fix any overflow or misalignment.
+- When done, list what you changed and anything you were unsure about.
