@@ -13,6 +13,7 @@ import type { MemoryType } from './memoryType';
 
 export interface Memory {
   id: number;
+  is_sample: boolean;
   type: MemoryType;
   title: string;
   /** @nullable */

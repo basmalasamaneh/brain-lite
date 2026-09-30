@@ -8,14 +8,11 @@
 
 export interface BrainProfile {
   id: string;
-  /** @nullable */
-  email: string | null;
-  /** @nullable */
-  firstName: string | null;
-  /** @nullable */
-  lastName: string | null;
-  /** @nullable */
-  profileImageUrl: string | null;
+  email: string;
+  name: string;
+  language: string;
+  theme: string;
+  onboardingCompleted: boolean;
   createdAt: string;
   updatedAt: string;
 }

@@ -1,12 +1,18 @@
 import express, { type Express } from "express";
-import cors from "cors";
-import cookieParser from "cookie-parser";
+import session from "express-session";
+import connectPgSimple from "connect-pg-simple";
+import helmet from "helmet";
 import pinoHttp from "pino-http";
+import { pool } from "@workspace/db";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { authMiddleware } from "./middlewares/authMiddleware";
 
 const app: Express = express();
+const sessionSecret = process.env.SESSION_SECRET;
+if (!sessionSecret || sessionSecret.length < 32) throw new Error("SESSION_SECRET (at least 32 characters) is required");
+app.set("trust proxy", 1);
+app.use(helmet());
 
 app.use(
   pinoHttp({
@@ -27,11 +33,39 @@ app.use(
     },
   }),
 );
-app.use(cors({ credentials: true, origin: true }));
-app.use(cookieParser());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(authMiddleware);
+app.use(express.json({ limit: "1mb" }));
+app.use(session({
+  secret: sessionSecret,
+  name: "brain.sid",
+  resave: false,
+  saveUninitialized: false,
+  store: new (connectPgSimple(session))({ pool, tableName: "sessions", createTableIfMissing: false }),
+  cookie: { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", maxAge: 7 * 24 * 3600 * 1000 },
+}));
+app.use("/api", (req, res, next) => {
+  res.setHeader("Cache-Control", "private, no-store");
+  if (!["GET", "HEAD", "OPTIONS"].includes(req.method)) {
+    const origin = req.get("origin") || req.get("referer");
+    const host = req.get("x-forwarded-host") || req.get("host");
+    let crossSite = req.get("sec-fetch-site") === "cross-site";
+    if (origin) {
+      try {
+        const source = new URL(origin);
+        crossSite ||= !host || source.host !== host || !["http:", "https:"].includes(source.protocol);
+      } catch { crossSite = true; }
+    }
+    if (crossSite) {
+      res.status(403).json({ error: "Cross-site request rejected" });
+      return;
+    }
+  }
+  next();
+});
+// Authenticate all API paths except the two public credential endpoints.
+app.use("/api", (req, res, next) => {
+  if (req.method === "POST" && (req.path === "/auth/signup" || req.path === "/auth/login")) return next();
+  authMiddleware(req, res, next);
+});
 
 app.use("/api", router);
 

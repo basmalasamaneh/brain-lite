@@ -87,6 +87,11 @@ paths:
           content:
             application/json:
               schema: {$ref: "#/components/schemas/Memory"}
+  /memories/samples:
+    delete:
+      operationId: deleteSampleMemories
+      responses:
+        "204": {description: Removed own sample memories}
   /memories/stats:
     get:
       operationId: getMemoryStats
@@ -149,32 +154,83 @@ paths:
           content:
             application/json:
               schema: {$ref: "#/components/schemas/UploadUrlResponse"}
-  /auth/user:
-    get:
-      operationId: getCurrentAuthUser
-      responses:
-        "200":
-          description: Auth state
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [user]
-                properties:
-                  user:
-                    oneOf:
-                      - {$ref: "#/components/schemas/AuthUser"}
-                      - {type: "null"}
-  /mobile-auth/token-exchange:
+  /auth/signup:
     post:
-      operationId: exchangeMobileAuthorizationCode
+      operationId: signUp
       requestBody:
         required: true
         content:
           application/json:
-            schema: {$ref: "#/components/schemas/MobileAuthInput"}
+            schema: {$ref: "#/components/schemas/SignUpInput"}
       responses:
-        "200": {description: Session}
+        "201":
+          description: Account created
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/AuthResult"}
+  /auth/login:
+    post:
+      operationId: logIn
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/LoginInput"}
+      responses:
+        "200":
+          description: Signed in
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/AuthResult"}
+  /auth/logout:
+    post:
+      operationId: logOut
+      responses:
+        "204": {description: Signed out}
+  /auth/me:
+    get:
+      operationId: getAuthMe
+      responses:
+        "200":
+          description: Authenticated user
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/AuthResult"}
+        "401": {description: Sign in required}
+  /auth/profile:
+    patch:
+      operationId: updateAuthProfile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ProfileInput"}
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/AuthResult"}
+  /auth/password:
+    post:
+      operationId: changeAuthPassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/PasswordInput"}
+      responses:
+        "204": {description: Password changed}
+  /auth/account:
+    delete:
+      operationId: deleteAuthAccount
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/AccountDeletionInput"}
+      responses:
+        "204": {description: Account and files deleted}
   /healthz:
     get:
       operationId: healthCheck
@@ -213,13 +269,14 @@ components:
         uploads: {type: array, items: {$ref: "#/components/schemas/BrainUpload"}}
     BrainProfile:
       type: object
-      required: [id, email, firstName, lastName, profileImageUrl, createdAt, updatedAt]
+      required: [id, email, name, language, theme, onboardingCompleted, createdAt, updatedAt]
       properties:
         id: {type: string}
-        email: {type: [string, "null"]}
-        firstName: {type: [string, "null"]}
-        lastName: {type: [string, "null"]}
-        profileImageUrl: {type: [string, "null"]}
+        email: {type: string}
+        name: {type: string}
+        language: {type: string}
+        theme: {type: string}
+        onboardingCompleted: {type: boolean}
         createdAt: {type: string}
         updatedAt: {type: string}
     BrainUpload:
@@ -244,22 +301,60 @@ components:
         scope: {type: string}
     AuthUser:
       type: object
-      required: [id, email, firstName, lastName, profileImageUrl]
+      required: [id, email, name, language, theme, onboardingCompleted]
       properties:
         id: {type: string}
-        email: {type: [string, "null"]}
-        firstName: {type: [string, "null"]}
-        lastName: {type: [string, "null"]}
-        profileImageUrl: {type: [string, "null"]}
-    MobileAuthInput:
+        email: {type: string}
+        name: {type: string}
+        firstName: {type: string}
+        lastName: {type: string}
+        language: {type: string, enum: [en, ar]}
+        theme: {type: string, enum: [system, light, dark]}
+        onboardingCompleted: {type: boolean}
+    AuthResult:
       type: object
-      required: [code, codeVerifier, redirectUri, nonce, state]
+      required: [user]
       properties:
-        code: {type: string}
-        codeVerifier: {type: string}
-        redirectUri: {type: string}
-        nonce: {type: string}
-        state: {type: string}
+        user: {$ref: "#/components/schemas/AuthUser"}
+    SignUpInput:
+      type: object
+      additionalProperties: false
+      required: [email, password, name, language, theme]
+      properties:
+        email: {type: string, format: email, maxLength: 254}
+        password: {type: string, minLength: 8, maxLength: 72}
+        name: {type: string, minLength: 1, maxLength: 120}
+        language: {type: string, enum: [en, ar]}
+        theme: {type: string, enum: [system, light, dark]}
+    LoginInput:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email: {type: string}
+        password: {type: string}
+    ProfileInput:
+      type: object
+      additionalProperties: false
+      properties:
+        name: {type: string, minLength: 1, maxLength: 120}
+        language: {type: string, enum: [en, ar]}
+        theme: {type: string, enum: [system, light, dark]}
+        onboardingCompleted: {type: boolean}
+    PasswordInput:
+      type: object
+      additionalProperties: false
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword: {type: string}
+        newPassword: {type: string, minLength: 8, maxLength: 72}
+    AccountDeletionInput:
+      type: object
+      additionalProperties: false
+      required: [confirmation, password]
+      properties:
+        confirmation: {type: string, enum: [DELETE]}
+        password: {type: string}
     UploadUrlRequest:
       type: object
       required: [name, size, contentType]
@@ -281,9 +376,10 @@ components:
       enum: [confirmed, needs_review]
     Memory:
       type: object
-      required: [id, type, title, summary, raw_text, event_date, amount, currency, people, tags, confidence, status, file_path, created_at]
+      required: [id, type, title, summary, raw_text, event_date, amount, currency, people, tags, confidence, status, file_path, created_at, is_sample]
       properties:
         id: {type: integer}
+        is_sample: {type: boolean}
         type: {$ref: "#/components/schemas/MemoryType"}
         title: {type: string}
         summary: {type: [string, "null"]}

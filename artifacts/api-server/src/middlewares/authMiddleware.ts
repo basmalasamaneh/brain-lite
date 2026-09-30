@@ -1,62 +1,38 @@
+import { db, usersTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
+import type { NextFunction, Request, Response } from "express";
 import type { AuthUser } from "@workspace/api-zod";
-import { type NextFunction, type Request, type Response } from "express";
-import * as oidc from "openid-client";
-import {
-  clearSession, getOidcConfig, getSession, getSessionId, updateSession,
-  type SessionData,
-} from "../lib/auth";
+import { publicUser } from "../lib/auth";
+import { deletingUsers } from "../lib/brain-state";
 
+declare module "express-session" {
+  interface SessionData { userId?: string }
+}
 declare global {
   namespace Express {
     interface User extends AuthUser {}
     interface Request {
       isAuthenticated(): this is AuthedRequest;
-      user?: User | undefined;
+      user?: User;
     }
-    export interface AuthedRequest {
-      user: User;
-    }
-  }
-}
-
-async function refreshIfExpired(sid: string, session: SessionData): Promise<SessionData | null> {
-  const now = Math.floor(Date.now() / 1000);
-  if (!session.expires_at || now <= session.expires_at) return session;
-  if (!session.refresh_token) return null;
-  try {
-    const config = await getOidcConfig();
-    const tokens = await oidc.refreshTokenGrant(config, session.refresh_token);
-    session.access_token = tokens.access_token;
-    session.refresh_token = tokens.refresh_token ?? session.refresh_token;
-    session.expires_at = tokens.expiresIn() ? now + tokens.expiresIn()! : session.expires_at;
-    await updateSession(sid, session);
-    return session;
-  } catch {
-    return null;
+    interface AuthedRequest { user: User }
   }
 }
 
 export async function authMiddleware(req: Request, res: Response, next: NextFunction) {
   req.isAuthenticated = function (this: Request) {
-    return this.user != null;
+    return !!this.user;
   } as Request["isAuthenticated"];
-
   try {
-    const sid = getSessionId(req);
-    if (!sid) return next();
-    const session = await getSession(sid);
-    if (!session?.user?.id) {
-      await clearSession(res, sid);
-      return next();
+    if (req.session.userId) {
+      const [row] = await db.select().from(usersTable).where(eq(usersTable.id, req.session.userId));
+      if (row) req.user = publicUser(row);
+      else req.session.userId = undefined;
     }
-    const refreshed = await refreshIfExpired(sid, session);
-    if (!refreshed) {
-      await clearSession(res, sid);
-      return next();
+    if (!req.user || deletingUsers.has(req.user.id)) {
+      res.status(401).json({ error: "Authentication required" });
+      return;
     }
-    req.user = refreshed.user;
     next();
-  } catch (error) {
-    next(error);
-  }
+  } catch (error) { next(error); }
 }

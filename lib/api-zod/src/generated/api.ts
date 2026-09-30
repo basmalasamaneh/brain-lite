@@ -25,6 +25,7 @@ export const AskBrainResponse = zod.object({
   "source_ids": zod.array(zod.number().int()),
   "sources": zod.array(zod.object({
   "id": zod.number().int(),
+  "is_sample": zod.boolean(),
   "type": zod.enum(['appointment', 'receipt', 'task', 'idea', 'document', 'note', 'other']),
   "title": zod.string(),
   "summary": zod.string().nullable(),
@@ -51,15 +52,17 @@ export const AskBrainResponse = zod.object({
 export const ExportBrainDataResponse = zod.object({
   "profile": zod.object({
   "id": zod.string(),
-  "email": zod.string().nullable(),
-  "firstName": zod.string().nullable(),
-  "lastName": zod.string().nullable(),
-  "profileImageUrl": zod.string().nullable(),
+  "email": zod.string(),
+  "name": zod.string(),
+  "language": zod.string(),
+  "theme": zod.string(),
+  "onboardingCompleted": zod.boolean(),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 }),
   "memories": zod.array(zod.object({
   "id": zod.number().int(),
+  "is_sample": zod.boolean(),
   "type": zod.enum(['appointment', 'receipt', 'task', 'idea', 'document', 'note', 'other']),
   "title": zod.string(),
   "summary": zod.string().nullable(),
@@ -107,6 +110,7 @@ export const ListMemoriesQueryParams = zod.object({
 
 export const ListMemoriesResponseItem = zod.object({
   "id": zod.number().int(),
+  "is_sample": zod.boolean(),
   "type": zod.enum(['appointment', 'receipt', 'task', 'idea', 'document', 'note', 'other']),
   "title": zod.string(),
   "summary": zod.string().nullable(),
@@ -145,6 +149,7 @@ export const CreateMemoryBody = zod.object({
 
 export const CreateMemoryResponse = zod.object({
   "id": zod.number().int(),
+  "is_sample": zod.boolean(),
   "type": zod.enum(['appointment', 'receipt', 'task', 'idea', 'document', 'note', 'other']),
   "title": zod.string(),
   "summary": zod.string().nullable(),
@@ -164,6 +169,9 @@ export const CreateMemoryResponse = zod.object({
 })
 
 
+export const DeleteSampleMemoriesResponse = zod.void()
+
+
 export const GetMemoryStatsResponse = zod.object({
   "total": zod.number().int(),
   "needs_review": zod.number().int(),
@@ -177,6 +185,7 @@ export const GetMemoryParams = zod.object({
 
 export const GetMemoryResponse = zod.object({
   "id": zod.number().int(),
+  "is_sample": zod.boolean(),
   "type": zod.enum(['appointment', 'receipt', 'task', 'idea', 'document', 'note', 'other']),
   "title": zod.string(),
   "summary": zod.string().nullable(),
@@ -232,6 +241,7 @@ export const UpdateMemoryBody = zod.object({
 
 export const UpdateMemoryResponse = zod.object({
   "id": zod.number().int(),
+  "is_sample": zod.boolean(),
   "type": zod.enum(['appointment', 'receipt', 'task', 'idea', 'document', 'note', 'other']),
   "title": zod.string(),
   "summary": zod.string().nullable(),
@@ -283,26 +293,117 @@ export const RequestUploadUrlResponse = zod.object({
 })
 
 
-export const GetCurrentAuthUserResponse = zod.object({
-  "user": zod.union([zod.object({
+export const signUpBodyEmailMax = 254;
+
+export const signUpBodyPasswordMin = 8;
+export const signUpBodyPasswordMax = 72;
+
+export const signUpBodyNameMax = 120;
+
+
+
+export const SignUpBody = zod.object({
+  "email": zod.string().email().max(signUpBodyEmailMax),
+  "password": zod.string().min(signUpBodyPasswordMin).max(signUpBodyPasswordMax),
+  "name": zod.string().min(1).max(signUpBodyNameMax),
+  "language": zod.enum(['en', 'ar']),
+  "theme": zod.enum(['system', 'light', 'dark'])
+})
+
+export const SignUpResponse = zod.object({
+  "user": zod.object({
   "id": zod.string(),
-  "email": zod.string().nullable(),
-  "firstName": zod.string().nullable(),
-  "lastName": zod.string().nullable(),
-  "profileImageUrl": zod.string().nullable()
-}),zod.null()])
+  "email": zod.string(),
+  "name": zod.string(),
+  "firstName": zod.string().optional(),
+  "lastName": zod.string().optional(),
+  "language": zod.enum(['en', 'ar']),
+  "theme": zod.enum(['system', 'light', 'dark']),
+  "onboardingCompleted": zod.boolean()
+})
 })
 
 
-export const ExchangeMobileAuthorizationCodeBody = zod.object({
-  "code": zod.string(),
-  "codeVerifier": zod.string(),
-  "redirectUri": zod.string(),
-  "nonce": zod.string(),
-  "state": zod.string()
+export const LogInBody = zod.object({
+  "email": zod.string(),
+  "password": zod.string()
 })
 
-export const ExchangeMobileAuthorizationCodeResponse = zod.unknown()
+export const LogInResponse = zod.object({
+  "user": zod.object({
+  "id": zod.string(),
+  "email": zod.string(),
+  "name": zod.string(),
+  "firstName": zod.string().optional(),
+  "lastName": zod.string().optional(),
+  "language": zod.enum(['en', 'ar']),
+  "theme": zod.enum(['system', 'light', 'dark']),
+  "onboardingCompleted": zod.boolean()
+})
+})
+
+
+export const LogOutResponse = zod.void()
+
+
+export const GetAuthMeResponse = zod.object({
+  "user": zod.object({
+  "id": zod.string(),
+  "email": zod.string(),
+  "name": zod.string(),
+  "firstName": zod.string().optional(),
+  "lastName": zod.string().optional(),
+  "language": zod.enum(['en', 'ar']),
+  "theme": zod.enum(['system', 'light', 'dark']),
+  "onboardingCompleted": zod.boolean()
+})
+})
+
+
+export const updateAuthProfileBodyNameMax = 120;
+
+
+
+export const UpdateAuthProfileBody = zod.object({
+  "name": zod.string().min(1).max(updateAuthProfileBodyNameMax).optional(),
+  "language": zod.enum(['en', 'ar']).optional(),
+  "theme": zod.enum(['system', 'light', 'dark']).optional(),
+  "onboardingCompleted": zod.boolean().optional()
+})
+
+export const UpdateAuthProfileResponse = zod.object({
+  "user": zod.object({
+  "id": zod.string(),
+  "email": zod.string(),
+  "name": zod.string(),
+  "firstName": zod.string().optional(),
+  "lastName": zod.string().optional(),
+  "language": zod.enum(['en', 'ar']),
+  "theme": zod.enum(['system', 'light', 'dark']),
+  "onboardingCompleted": zod.boolean()
+})
+})
+
+
+export const changeAuthPasswordBodyNewPasswordMin = 8;
+export const changeAuthPasswordBodyNewPasswordMax = 72;
+
+
+
+export const ChangeAuthPasswordBody = zod.object({
+  "currentPassword": zod.string(),
+  "newPassword": zod.string().min(changeAuthPasswordBodyNewPasswordMin).max(changeAuthPasswordBodyNewPasswordMax)
+})
+
+export const ChangeAuthPasswordResponse = zod.void()
+
+
+export const DeleteAuthAccountBody = zod.object({
+  "confirmation": zod.enum(['DELETE']),
+  "password": zod.string()
+})
+
+export const DeleteAuthAccountResponse = zod.void()
 
 
 /**

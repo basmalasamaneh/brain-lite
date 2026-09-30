@@ -6,7 +6,12 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './accountDeletionInput';
+export * from './accountDeletionInputConfirmation';
+export * from './authResult';
 export * from './authUser';
+export * from './authUserLanguage';
+export * from './authUserTheme';
 export * from './brainAnswer';
 export * from './brainDeletion';
 export * from './brainDeletionConfirmation';
@@ -16,10 +21,10 @@ export * from './brainProfile';
 export * from './brainQuestion';
 export * from './brainQuestionLanguage';
 export * from './brainUpload';
-export * from './getCurrentAuthUser200';
 export * from './healthStatus';
 export * from './listMemoriesParams';
 export * from './listMemoriesStatus';
+export * from './loginInput';
 export * from './memory';
 export * from './memoryExtra';
 export * from './memoryExtractionError';
@@ -31,7 +36,13 @@ export * from './memoryStatus';
 export * from './memoryType';
 export * from './memoryUpdate';
 export * from './memoryUpdateExtra';
-export * from './mobileAuthInput';
+export * from './passwordInput';
+export * from './profileInput';
+export * from './profileInputLanguage';
+export * from './profileInputTheme';
+export * from './signUpInput';
+export * from './signUpInputLanguage';
+export * from './signUpInputTheme';
 export * from './uploadUrlRequest';
 export * from './uploadUrlRequestContentType';
 export * from './uploadUrlResponse';

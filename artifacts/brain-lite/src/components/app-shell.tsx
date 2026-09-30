@@ -1,9 +1,11 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'wouter';
-import { Brain, Home, Languages, Library, LogIn, LogOut, MessageCircleQuestion, Monitor, Moon, Plus, Settings, Sun } from 'lucide-react';
+import { Brain, Home, Languages, Library, Loader2, LogOut, MessageCircleQuestion, Monitor, Moon, Plus, Settings, Sun } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useI18n, type TKey } from '@/lib/i18n';
 import { useTheme, type ThemeChoice } from '@/lib/theme';
+import { usePreferences } from '@/lib/auth-helpers';
+import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 const nav: { href: string; key: TKey; icon: typeof Home }[] = [
@@ -19,7 +21,8 @@ function isActive(loc: string, href: string) {
 }
 
 function ThemeSwitch() {
-  const { theme, setTheme } = useTheme();
+  const { theme } = useTheme();
+  const { setTheme } = usePreferences();
   const { t } = useI18n();
   const opts: { v: ThemeChoice; icon: typeof Sun; k: TKey }[] = [
     { v: 'light', icon: Sun, k: 'themeLight' }, { v: 'dark', icon: Moon, k: 'themeDark' }, { v: 'system', icon: Monitor, k: 'themeSystem' },
@@ -37,7 +40,8 @@ function ThemeSwitch() {
 }
 
 function LangSwitch({ compact }: { compact?: boolean }) {
-  const { lang, setLang, t } = useI18n();
+  const { lang, t } = useI18n();
+  const { setLanguage: setLang } = usePreferences();
   return (
     <button onClick={() => setLang(lang === 'en' ? 'ar' : 'en')} aria-label={t('language')} data-testid="button-language"
       className={cn('flex items-center gap-2 rounded-xl text-sm font-medium transition hover:bg-lavender hover:text-primary', compact ? 'h-9 px-2.5' : 'w-full px-3 py-2')}>
@@ -49,22 +53,26 @@ function LangSwitch({ compact }: { compact?: boolean }) {
 
 function AuthBlock() {
   const { t } = useI18n();
-  const { user, isAuthenticated, isLoading, login, logout } = useAuth();
-  if (isLoading) return <div className="h-12 animate-pulse rounded-xl bg-muted" />;
-  if (!isAuthenticated) return (
-    <button onClick={login} className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground transition hover:brightness-110 active:scale-95" data-testid="button-login">
-      <LogIn className="h-4 w-4" />{t('login')}
-    </button>
-  );
-  const name = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.email || t('signedInAs');
+  const { user, logout } = useAuth();
+  const { toast } = useToast();
+  const [, navigate] = useLocation();
+  const [busy, setBusy] = useState(false);
+  if (!user) return null;
+  const name = user.name || user.email;
+  const doLogout = async () => {
+    setBusy(true);
+    try { await logout(); navigate('/login', { replace: true }); }
+    catch { toast({ variant: 'destructive', title: t('logoutFail') }); setBusy(false); }
+  };
   return (
     <div className="flex items-center gap-3 rounded-xl p-2">
-      {user?.profileImageUrl
-        ? <img src={user.profileImageUrl} alt="" className="h-9 w-9 rounded-full object-cover" />
-        : <span className="grid h-9 w-9 place-items-center rounded-full bg-lavender text-sm font-semibold text-primary">{name.charAt(0).toUpperCase()}</span>}
-      <span className="min-w-0 flex-1 truncate text-sm font-medium" data-testid="text-username">{name}</span>
-      <button onClick={logout} title={t('logout')} className="rounded-lg p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground" data-testid="button-logout">
-        <LogOut className="h-4 w-4 rtl:-scale-x-100" /><span className="sr-only">{t('logout')}</span>
+      <span className="grid h-9 w-9 place-items-center rounded-full bg-lavender text-sm font-semibold text-primary" aria-hidden>{name.charAt(0).toUpperCase()}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-medium" data-testid="text-username">{name}</span>
+        <span className="block truncate text-xs text-muted-foreground" dir="ltr" data-testid="text-user-email">{user.email}</span>
+      </span>
+      <button onClick={doLogout} disabled={busy} title={t('logout')} className="rounded-lg p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-50" data-testid="button-logout">
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4 rtl:-scale-x-100" />}<span className="sr-only">{t('logout')}</span>
       </button>
     </div>
   );
@@ -83,7 +91,6 @@ function Logo() {
 export function AppShell({ children }: { children: ReactNode }) {
   const [loc] = useLocation();
   const { t } = useI18n();
-  const { isAuthenticated, isLoading, login } = useAuth();
   const mobileTabs = [nav[0], nav[1], nav[3], nav[2]];
 
   return (
@@ -120,15 +127,12 @@ export function AppShell({ children }: { children: ReactNode }) {
             className={cn('grid h-9 w-9 place-items-center rounded-xl transition hover:bg-lavender hover:text-primary', isActive(loc, '/settings') && 'bg-lavender text-primary')}>
             <Settings className="h-4 w-4" />
           </Link>
-          {!isLoading && !isAuthenticated && (
-            <button onClick={login} className="grid h-9 w-9 place-items-center rounded-xl bg-primary text-primary-foreground" aria-label={t('login')} data-testid="button-login-mobile"><LogIn className="h-4 w-4" /></button>
-          )}
         </div>
       </header>
 
       <main className="md:ps-64">
         <div className="mx-auto w-full max-w-5xl px-4 pb-32 pt-6 sm:px-8 md:pb-16 md:pt-12">{children}</div>
-        {isAuthenticated && <div className="px-4 pb-28 md:hidden"><AuthBlock /></div>}
+        <div className="px-4 pb-28 md:hidden"><AuthBlock /></div>
       </main>
 
       <nav className="fixed inset-x-3 bottom-3 z-40 flex items-end justify-around rounded-2xl border border-border bg-card/90 px-2 pb-2 pt-2 soft-shadow backdrop-blur md:hidden">

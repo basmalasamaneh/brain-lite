@@ -1,175 +1,132 @@
-import {
-  ExchangeMobileAuthorizationCodeBody, GetCurrentAuthUserResponse,
-} from "@workspace/api-zod";
-import { db, usersTable } from "@workspace/db";
-import { Router, type IRouter, type Request, type Response } from "express";
-import * as oidc from "openid-client";
-import {
-  clearSession, createSession, deleteSession, getOidcConfig, getSessionId,
-  ISSUER_URL, SESSION_COOKIE, SESSION_TTL, type SessionData,
-} from "../lib/auth";
+import { Router, type IRouter, type Request } from "express";
+import { db, memoriesTable, uploadsTable, usersTable, pool } from "@workspace/db";
+import { eq } from "drizzle-orm";
+import bcrypt from "bcryptjs";
+import rateLimit from "express-rate-limit";
+import { z } from "zod";
+import { publicUser } from "../lib/auth";
+import { ObjectNotFoundError, ObjectStorageService } from "../lib/objectStorage";
+import { activeCaptures, activeQuestions, activeUploadRequests, deletingUsers } from "../lib/brain-state";
 
 const router: IRouter = Router();
-const OIDC_COOKIE_TTL = 10 * 60 * 1000;
+const storage = new ObjectStorageService();
+const email = z.string().trim().email().max(254).transform((value) => value.toLowerCase());
+const password = z.string().min(8).refine((value) => Buffer.byteLength(value, "utf8") <= 72, "Password must be at most 72 UTF-8 bytes");
+const signup = z.object({
+  email, password, name: z.string().trim().min(1).max(120),
+  language: z.enum(["en", "ar"]), theme: z.enum(["system", "light", "dark"]),
+}).strict();
+const login = z.object({ email, password: z.string() }).strict();
+const profile = signup.pick({ name: true, language: true, theme: true }).partial()
+  .extend({ onboardingCompleted: z.boolean().optional() }).strict();
+const limiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: "draft-7", legacyHeaders: false,
+  message: { error: "Too many attempts. Try again later." } });
 
-function getOrigin(req: Request): string {
-  const proto = req.headers["x-forwarded-proto"] || "https";
-  const host = req.headers["x-forwarded-host"] || req.headers.host || "localhost";
-  return `${proto}://${host}`;
+function establish(req: Request, userId: string): Promise<void> {
+  return new Promise((resolve, reject) => req.session.regenerate((error) => {
+    if (error) return reject(error);
+    req.session.userId = userId;
+    req.session.save((saveError) => saveError ? reject(saveError) : resolve());
+  }));
+}
+function destroy(req: Request): Promise<void> {
+  return new Promise((resolve, reject) => req.session.destroy((error) => error ? reject(error) : resolve()));
 }
 
-function getSafeReturnTo(value: unknown): string {
-  return typeof value === "string" && value.startsWith("/") && !value.startsWith("//") && !value.includes("\\")
-    ? value : "/";
-}
-
-function setSessionCookie(res: Response, sid: string) {
-  res.cookie(SESSION_COOKIE, sid, {
-    httpOnly: true, secure: true, sameSite: "lax", path: "/", maxAge: SESSION_TTL,
-  });
-}
-
-function setOidcCookie(res: Response, name: string, value: string) {
-  res.cookie(name, value, {
-    httpOnly: true, secure: true, sameSite: "lax", path: "/", maxAge: OIDC_COOKIE_TTL,
-  });
-}
-
-async function upsertUser(claims: Record<string, unknown>) {
-  const userData = {
-    id: claims.sub as string,
-    email: (claims.email as string) || null,
-    firstName: (claims.first_name as string) || null,
-    lastName: (claims.last_name as string) || null,
-    profileImageUrl: (claims.profile_image_url || claims.picture || null) as string | null,
-  };
-  const [user] = await db.insert(usersTable).values(userData).onConflictDoUpdate({
-    target: usersTable.id,
-    set: { ...userData, updatedAt: new Date() },
-  }).returning();
-  return user;
-}
-
-async function establishSession(tokens: oidc.TokenEndpointResponse & oidc.TokenEndpointResponseHelpers) {
-  const claims = tokens.claims();
-  if (!claims) return null;
-  const dbUser = await upsertUser(claims as unknown as Record<string, unknown>);
-  const now = Math.floor(Date.now() / 1000);
-  const sessionData: SessionData = {
-    user: {
-      id: dbUser.id, email: dbUser.email, firstName: dbUser.firstName,
-      lastName: dbUser.lastName, profileImageUrl: dbUser.profileImageUrl,
-    },
-    access_token: tokens.access_token,
-    refresh_token: tokens.refresh_token,
-    expires_at: tokens.expiresIn() ? now + tokens.expiresIn()! : claims.exp,
-  };
-  return createSession(sessionData);
-}
-
-router.get("/auth/user", (req, res) => {
-  res.json(GetCurrentAuthUserResponse.parse({ user: req.isAuthenticated() ? req.user : null }));
-});
-
-router.get("/login", async (req: Request, res: Response) => {
-  const config = await getOidcConfig();
-  const callbackUrl = `${getOrigin(req)}/api/callback`;
-  const state = oidc.randomState();
-  const nonce = oidc.randomNonce();
-  const codeVerifier = oidc.randomPKCECodeVerifier();
-  const codeChallenge = await oidc.calculatePKCECodeChallenge(codeVerifier);
-  const redirectTo = oidc.buildAuthorizationUrl(config, {
-    redirect_uri: callbackUrl, scope: "openid email profile offline_access",
-    code_challenge: codeChallenge, code_challenge_method: "S256",
-    prompt: "login consent", state, nonce,
-  });
-  setOidcCookie(res, "code_verifier", codeVerifier);
-  setOidcCookie(res, "nonce", nonce);
-  setOidcCookie(res, "state", state);
-  setOidcCookie(res, "return_to", getSafeReturnTo(req.query.returnTo));
-  res.redirect(redirectTo.href);
-});
-
-router.get("/callback", async (req: Request, res: Response) => {
-  const config = await getOidcConfig();
-  const callbackUrl = `${getOrigin(req)}/api/callback`;
-  const codeVerifier = req.cookies?.code_verifier;
-  const nonce = req.cookies?.nonce;
-  const expectedState = req.cookies?.state;
-  if (!codeVerifier || !expectedState) {
-    res.redirect("/api/login");
-    return;
-  }
-  const currentUrl = new URL(`${callbackUrl}?${new URL(req.url, `http://${req.headers.host}`).searchParams}`);
-  let tokens: oidc.TokenEndpointResponse & oidc.TokenEndpointResponseHelpers;
+router.post("/auth/signup", limiter, async (req, res) => {
+  const parsed = signup.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Invalid signup details (password must be 8–72 UTF-8 bytes)" }); return; }
+  const { email, password, name, language, theme } = parsed.data;
+  const hash = await bcrypt.hash(password, 12);
   try {
-    tokens = await oidc.authorizationCodeGrant(config, currentUrl, {
-      pkceCodeVerifier: codeVerifier, expectedNonce: nonce,
-      expectedState, idTokenExpected: true,
+    const user = await db.transaction(async (tx) => {
+      const [row] = await tx.insert(usersTable).values({ email, passwordHash: hash, name, language, theme }).returning();
+      const examples = [
+        ["Welcome to your second brain", "Capture a thought, link, or note here anytime."],
+        ["Try asking your brain", "Ask a question and Brain Lite searches only your own memories."],
+        ["Plan an appointment", "Save the date and details of an upcoming appointment."],
+        ["Remember a receipt", "Keep important purchase information together."],
+        ["Your daily brief", "See an overview of your upcoming tasks and plans."],
+      ];
+      await tx.insert(memoriesTable).values(examples.map(([title, raw_text]) => ({
+        userId: row.id, title, raw_text, summary: raw_text, tags: ["sample"],
+        status: "confirmed" as const, confidence: 100, is_sample: true,
+      })));
+      return row;
     });
-  } catch {
-    res.redirect("/api/login");
-    return;
-  }
-  const returnTo = getSafeReturnTo(req.cookies?.return_to);
-  for (const cookie of ["code_verifier", "nonce", "state", "return_to"]) {
-    res.clearCookie(cookie, { path: "/" });
-  }
-  const sid = await establishSession(tokens);
-  if (!sid) {
-    res.redirect("/api/login");
-    return;
-  }
-  setSessionCookie(res, sid);
-  res.redirect(returnTo);
-});
-
-router.get("/logout", async (req: Request, res: Response) => {
-  const config = await getOidcConfig();
-  const origin = getOrigin(req);
-  const returnTo = getSafeReturnTo(req.query.returnTo);
-  const sid = getSessionId(req);
-  await clearSession(res, sid);
-  const endSessionUrl = oidc.buildEndSessionUrl(config, {
-    client_id: process.env.REPL_ID!,
-    post_logout_redirect_uri: new URL(returnTo, `${origin}/`).href,
-  });
-  res.redirect(endSessionUrl.href);
-});
-
-router.post("/mobile-auth/token-exchange", async (req: Request, res: Response) => {
-  const parsed = ExchangeMobileAuthorizationCodeBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: "Missing or invalid required parameters" });
-    return;
-  }
-  const { code, codeVerifier, redirectUri, state, nonce } = parsed.data;
-  try {
-    const config = await getOidcConfig();
-    const callbackUrl = new URL(redirectUri);
-    callbackUrl.searchParams.set("code", code);
-    callbackUrl.searchParams.set("state", state);
-    callbackUrl.searchParams.set("iss", ISSUER_URL);
-    const tokens = await oidc.authorizationCodeGrant(config, callbackUrl, {
-      pkceCodeVerifier: codeVerifier, expectedNonce: nonce,
-      expectedState: state, idTokenExpected: true,
-    });
-    const sid = await establishSession(tokens);
-    if (!sid) {
-      res.status(401).json({ error: "No claims in ID token" });
-      return;
-    }
-    res.json({ token: sid });
+    await establish(req, user.id);
+    res.status(201).json({ user: publicUser(user) });
   } catch (error) {
-    req.log.error({ errorName: error instanceof Error ? error.name : "Error" }, "Mobile token exchange error");
-    res.status(500).json({ error: "Token exchange failed" });
+    if ((error as { code?: string }).code === "23505") {
+      res.status(409).json({ error: "Email already registered" }); return;
+    }
+    throw error;
   }
 });
 
-router.post("/mobile-auth/logout", async (req: Request, res: Response) => {
-  const sid = getSessionId(req);
-  if (sid) await deleteSession(sid);
-  res.json({ success: true });
+router.post("/auth/login", limiter, async (req, res) => {
+  const parsed = login.safeParse(req.body);
+  if (!parsed.success) { res.status(401).json({ error: "Invalid email or password" }); return; }
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.email, parsed.data.email));
+  if (!user || !(await bcrypt.compare(parsed.data.password, user.passwordHash))) {
+    res.status(401).json({ error: "Invalid email or password" }); return;
+  }
+  await establish(req, user.id);
+  res.json({ user: publicUser(user) });
 });
-
+router.post("/auth/logout", async (req, res) => {
+  await destroy(req);
+  res.clearCookie("brain.sid", { path: "/" });
+  res.sendStatus(204);
+});
+router.get("/auth/me", (req, res) => res.json({ user: req.user }));
+router.patch("/auth/profile", async (req, res) => {
+  const parsed = profile.safeParse(req.body);
+  if (!parsed.success || !Object.keys(parsed.data).length) { res.status(400).json({ error: "Invalid profile changes" }); return; }
+  const [row] = await db.update(usersTable).set(parsed.data).where(eq(usersTable.id, req.user!.id)).returning();
+  if (!row) { res.sendStatus(401); return; }
+  res.json({ user: publicUser(row) });
+});
+router.post("/auth/password", async (req, res) => {
+  const parsed = z.object({ currentPassword: z.string(), newPassword: password }).strict().safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Invalid password details" }); return; }
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.user!.id));
+  if (!user || !(await bcrypt.compare(parsed.data.currentPassword, user.passwordHash))) {
+    res.status(401).json({ error: "Invalid password" }); return;
+  }
+  await db.update(usersTable).set({ passwordHash: await bcrypt.hash(parsed.data.newPassword, 12) })
+    .where(eq(usersTable.id, user.id));
+  // Revoke all other sessions. PostgreSQL sessions store only userId, never passwords.
+  await pool.query("DELETE FROM sessions WHERE sess->>'userId' = $1 AND sid <> $2", [user.id, req.sessionID]);
+  res.sendStatus(204);
+});
+router.delete("/auth/account", async (req, res) => {
+  const parsed = z.object({ confirmation: z.literal("DELETE"), password: z.string() }).strict().safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Confirm deletion with your password" }); return; }
+  const userId = req.user!.id;
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
+  if (!user || !(await bcrypt.compare(parsed.data.password, user.passwordHash))) {
+    res.status(401).json({ error: "Invalid password" }); return;
+  }
+  if (deletingUsers.has(userId) || activeCaptures.has(userId) || activeUploadRequests.has(userId) || activeQuestions.has(userId)) {
+    res.status(409).json({ error: "Please wait for current activity to finish and retry" }); return;
+  }
+  deletingUsers.add(userId);
+  try {
+    const uploads = await db.select({ path: uploadsTable.path }).from(uploadsTable).where(eq(uploadsTable.userId, userId));
+    for (const upload of uploads) {
+      try { await (await storage.getObjectEntityFile(upload.path)).delete({ ignoreNotFound: true }); }
+      catch (error) { if (!(error instanceof ObjectNotFoundError)) throw error; }
+    }
+    await db.transaction(async (tx) => {
+      await tx.delete(usersTable).where(eq(usersTable.id, userId));
+    });
+    await pool.query("DELETE FROM sessions WHERE sess->>'userId' = $1", [userId]);
+    await destroy(req);
+    res.clearCookie("brain.sid", { path: "/" });
+    res.sendStatus(204);
+  } catch {
+    res.status(503).json({ error: "Account deletion could not finish. Please retry." });
+  } finally { deletingUsers.delete(userId); }
+});
 export default router;

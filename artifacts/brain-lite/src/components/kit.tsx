@@ -1,8 +1,9 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link } from 'wouter';
-import { AlertCircle, ArrowUpRight, Eye, Paperclip, RotateCcw, Sparkle } from 'lucide-react';
-import { useAuth } from '@workspace/replit-auth-web';
-import type { Memory, MemoryStatus, MemoryType } from '@workspace/api-client-react';
+import { AlertCircle, ArrowUpRight, FlaskConical, Loader2, Paperclip, RotateCcw, Sparkle, Trash2 } from 'lucide-react';
+import { useListMemories, type Memory, type MemoryStatus, type MemoryType } from '@workspace/api-client-react';
+import { isSample, useRemoveSamples } from '@/lib/auth-helpers';
+import { useToast } from '@/hooks/use-toast';
 import { useI18n, type TKey } from '@/lib/i18n';
 import { formatAmount, formatDate, typeMeta } from '@/lib/memory';
 import { cn } from '@/lib/utils';
@@ -62,7 +63,7 @@ export function MemoryCard({ memory, index = 0 }: { memory: Memory; index?: numb
         <TypeIcon type={memory.type} />
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
-            <h3 className="font-display truncate font-semibold">{memory.title}</h3>
+            <h3 className="font-display flex min-w-0 items-center gap-2 font-semibold"><span className="truncate">{memory.title}</span>{isSample(memory) && <SampleBadge />}</h3>
             <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground opacity-0 transition group-hover:opacity-100 rtl:-scale-x-100" />
           </div>
           <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{memory.summary || memory.raw_text}</p>
@@ -121,15 +122,32 @@ export function EmptyState({ title, body, action }: { title: string; body?: stri
 
 export function SampleBanner() {
   const { t } = useI18n();
-  const { isAuthenticated, isLoading, login } = useAuth();
-  if (isLoading || isAuthenticated) return null;
+  const { toast } = useToast();
+  const list = useListMemories();
+  const remove = useRemoveSamples();
+  const [busy, setBusy] = useState(false);
+  const count = (list.data ?? []).filter(isSample).length;
+  if (!count) return null;
+  const onRemove = async () => {
+    setBusy(true);
+    try { await remove(); toast({ title: t('samplesRemoved') }); }
+    catch { toast({ variant: 'destructive', title: t('samplesRemoveFail') }); }
+    finally { setBusy(false); }
+  };
   return (
     <div className="rise mb-6 flex flex-col gap-3 rounded-2xl border border-amber/30 bg-amber/10 p-4 sm:flex-row sm:items-center" data-testid="banner-sample">
-      <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-amber px-2.5 py-1 text-xs font-semibold text-[#1C1B29]"><Eye className="h-3.5 w-3.5" />{t('samplePreview')}</span>
-      <p className="flex-1 text-sm">{t('sampleBanner')}</p>
-      <button onClick={login} className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:brightness-110 active:scale-95" data-testid="button-banner-login">{t('login')}</button>
+      <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-amber px-2.5 py-1 text-xs font-semibold text-[#1C1B29]"><FlaskConical className="h-3.5 w-3.5" />{t('sampleTag')} · {count}</span>
+      <div className="flex-1 text-sm"><p className="font-semibold">{t('samplesTitle')}</p><p className="text-muted-foreground">{t('samplesBody')}</p></div>
+      <button onClick={onRemove} disabled={busy} className={btnGhost} data-testid="button-remove-samples">
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}{busy ? t('removingSamples') : t('removeSamples')}
+      </button>
     </div>
   );
+}
+
+export function SampleBadge() {
+  const { t } = useI18n();
+  return <span className="inline-flex items-center gap-1 rounded-full border border-amber/40 bg-amber/15 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-amber" data-testid="badge-sample"><FlaskConical className="h-3 w-3" />{t('sampleTag')}</span>;
 }
 
 export const btnPrimary = 'inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-[0_6px_20px_-8px_hsl(var(--primary)/0.7)] transition hover:brightness-110 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50';

@@ -70,6 +70,7 @@ export type MemoryExtra = { [key: string]: unknown };
 
 export interface Memory {
   id: number;
+  is_sample: boolean;
   type: MemoryType;
   title: string;
   /** @nullable */
@@ -102,14 +103,11 @@ export interface BrainAnswer {
 
 export interface BrainProfile {
   id: string;
-  /** @nullable */
-  email: string | null;
-  /** @nullable */
-  firstName: string | null;
-  /** @nullable */
-  lastName: string | null;
-  /** @nullable */
-  profileImageUrl: string | null;
+  email: string;
+  name: string;
+  language: string;
+  theme: string;
+  onboardingCompleted: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -143,24 +141,124 @@ export interface BrainDeletionResult {
   scope: string;
 }
 
+export type AuthUserLanguage = typeof AuthUserLanguage[keyof typeof AuthUserLanguage];
+
+
+export const AuthUserLanguage = {
+  en: 'en',
+  ar: 'ar',
+} as const;
+
+export type AuthUserTheme = typeof AuthUserTheme[keyof typeof AuthUserTheme];
+
+
+export const AuthUserTheme = {
+  system: 'system',
+  light: 'light',
+  dark: 'dark',
+} as const;
+
 export interface AuthUser {
   id: string;
-  /** @nullable */
-  email: string | null;
-  /** @nullable */
-  firstName: string | null;
-  /** @nullable */
-  lastName: string | null;
-  /** @nullable */
-  profileImageUrl: string | null;
+  email: string;
+  name: string;
+  firstName?: string;
+  lastName?: string;
+  language: AuthUserLanguage;
+  theme: AuthUserTheme;
+  onboardingCompleted: boolean;
 }
 
-export interface MobileAuthInput {
-  code: string;
-  codeVerifier: string;
-  redirectUri: string;
-  nonce: string;
-  state: string;
+export interface AuthResult {
+  user: AuthUser;
+}
+
+export type SignUpInputLanguage = typeof SignUpInputLanguage[keyof typeof SignUpInputLanguage];
+
+
+export const SignUpInputLanguage = {
+  en: 'en',
+  ar: 'ar',
+} as const;
+
+export type SignUpInputTheme = typeof SignUpInputTheme[keyof typeof SignUpInputTheme];
+
+
+export const SignUpInputTheme = {
+  system: 'system',
+  light: 'light',
+  dark: 'dark',
+} as const;
+
+export interface SignUpInput {
+  /** @maxLength 254 */
+  email: string;
+  /**
+     * @minLength 8
+     * @maxLength 72
+     */
+  password: string;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  name: string;
+  language: SignUpInputLanguage;
+  theme: SignUpInputTheme;
+}
+
+export interface LoginInput {
+  email: string;
+  password: string;
+}
+
+export type ProfileInputLanguage = typeof ProfileInputLanguage[keyof typeof ProfileInputLanguage];
+
+
+export const ProfileInputLanguage = {
+  en: 'en',
+  ar: 'ar',
+} as const;
+
+export type ProfileInputTheme = typeof ProfileInputTheme[keyof typeof ProfileInputTheme];
+
+
+export const ProfileInputTheme = {
+  system: 'system',
+  light: 'light',
+  dark: 'dark',
+} as const;
+
+export interface ProfileInput {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  name?: string;
+  language?: ProfileInputLanguage;
+  theme?: ProfileInputTheme;
+  onboardingCompleted?: boolean;
+}
+
+export interface PasswordInput {
+  currentPassword: string;
+  /**
+     * @minLength 8
+     * @maxLength 72
+     */
+  newPassword: string;
+}
+
+export type AccountDeletionInputConfirmation = typeof AccountDeletionInputConfirmation[keyof typeof AccountDeletionInputConfirmation];
+
+
+export const AccountDeletionInputConfirmation = {
+  DELETE: 'DELETE',
+} as const;
+
+export interface AccountDeletionInput {
+  confirmation: AccountDeletionInputConfirmation;
+  password: string;
 }
 
 export type UploadUrlRequestContentType = typeof UploadUrlRequestContentType[keyof typeof UploadUrlRequestContentType];
@@ -272,8 +370,4 @@ export const ListMemoriesStatus = {
   confirmed: 'confirmed',
   needs_review: 'needs_review',
 } as const;
-
-export type GetCurrentAuthUser200 = {
-  user: AuthUser | null;
-};
 

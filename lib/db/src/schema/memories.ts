@@ -1,10 +1,12 @@
-import { pgTable, serial, text, integer, timestamp, doublePrecision, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, doublePrecision, jsonb, varchar, boolean } from "drizzle-orm/pg-core";
+import { usersTable } from "./auth";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
 export const memoriesTable = pgTable("memories", {
   id: serial("id").primaryKey(),
-  userId: text("user_id"),
+  userId: varchar("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  is_sample: boolean("is_sample").notNull().default(false),
   type: text("type", { enum: ["appointment", "receipt", "task", "idea", "document", "note", "other"] }).notNull().default("note"),
   title: text("title").notNull(),
   summary: text("summary"),

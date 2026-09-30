@@ -5,15 +5,16 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AuthUserLanguage } from './authUserLanguage';
+import type { AuthUserTheme } from './authUserTheme';
 
 export interface AuthUser {
   id: string;
-  /** @nullable */
-  email: string | null;
-  /** @nullable */
-  firstName: string | null;
-  /** @nullable */
-  lastName: string | null;
-  /** @nullable */
-  profileImageUrl: string | null;
+  email: string;
+  name: string;
+  firstName?: string;
+  lastName?: string;
+  language: AuthUserLanguage;
+  theme: AuthUserTheme;
+  onboardingCompleted: boolean;
 }

@@ -36,7 +36,8 @@ A bilingual, mobile-first personal second brain for capturing text, photos, and 
 - Capture extraction and Ask use the user's direct Gemini API key (not the Replit AI proxy). Ask answers only from the authenticated user's compact memory records with validated source IDs.
 - AI confidence of 80 or higher auto-confirms; lower confidence and failed extraction require review. Preserve raw text and the original attachment regardless of extraction outcome.
 - Only owned, size-checked attachments are sent to Google Gemini. The backend encodes PDFs and normalized images as inline base64 parts; the browser never receives a Gemini key.
-- Personal captures require sign-in; anonymous visitors see read-only samples, not other users' content. This protects potentially sensitive documents without hiding the initial experience behind a login screen.
+- Every app page and API endpoint requires email/password authentication except login/signup. Replit OIDC has been removed. Sessions use express-session/connect-pg-simple and SESSION_SECRET; passwords use bcrypt cost 12.
+- Each signup receives five owned sample memories with an explicit sample flag; removing samples never removes ordinary memories. Anonymous visitors see login, not shared sample data.
 - File bytes live in private App Storage; PostgreSQL holds paths and ownership metadata.
 
 ## Product
@@ -44,6 +45,10 @@ A bilingual, mobile-first personal second brain for capturing text, photos, and 
 Capture text, images, camera photos, and PDFs; review extracted fields and confidence; confirm or edit Brain Inbox items; download appointments as calendar files. English/Arabic with RTL and system/light/dark themes.
 
 Ask provides source-linked answers; Daily Brief uses local-calendar rules without AI for today, the next 7 days, explicit expirations within 30 days, and recent saves. Settings offers theme/language controls and JSON export. Delete all data requires typing DELETE and removes the user's memories and owned uploads/files while retaining the login account.
+
+Settings also persists profile name/language/theme, changes passwords, and offers a separate permanent account deletion requiring DELETE plus the current password. New accounts get skippable three-screen onboarding.
+
+The development data was reset with explicit user approval during the email-auth migration. Never repeat that reset automatically. The schema migration in lib/db/migrations/0001_email_auth.sql is non-destructive and rerunnable after the initial cutover.
 
 ## User preferences
 

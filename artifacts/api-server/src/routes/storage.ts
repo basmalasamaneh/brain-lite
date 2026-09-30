@@ -27,7 +27,7 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
   activeUploadRequests.set(userId, (activeUploadRequests.get(userId) ?? 0) + 1);
   try {
     const { name, size, contentType } = parsed.data;
-    const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+    const uploadURL = await objectStorageService.getObjectEntityUploadURL(userId);
     const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
     await db.insert(uploadsTable).values({
       path: objectPath, userId: req.user.id, name, size, contentType,
@@ -40,29 +40,6 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
     const remaining = (activeUploadRequests.get(userId) ?? 1) - 1;
     if (remaining) activeUploadRequests.set(userId, remaining);
     else activeUploadRequests.delete(userId);
-  }
-});
-
-router.get("/storage/public-objects/*filePath", async (req: Request, res: Response) => {
-  try {
-    const raw = req.params.filePath;
-    const filePath = Array.isArray(raw) ? raw.join("/") : raw;
-    const file = await objectStorageService.searchPublicObject(filePath);
-    if (!file) {
-      res.status(404).json({ error: "File not found" });
-      return;
-    }
-    const response = await objectStorageService.downloadObject(file);
-    res.status(response.status);
-    response.headers.forEach((value, key) => res.setHeader(key, value));
-    if (response.body) {
-      Readable.fromWeb(response.body as ReadableStream<Uint8Array>).pipe(res);
-    } else {
-      res.end();
-    }
-  } catch (error) {
-    req.log.error({ errorName: error instanceof Error ? error.name : "Error" }, "Error serving public object");
-    res.status(500).json({ error: "Failed to serve public object" });
   }
 });
 

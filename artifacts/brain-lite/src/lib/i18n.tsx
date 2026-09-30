@@ -1,3 +1,4 @@
+import { authAr, authEn } from './i18n-auth';
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 
 export type Lang = 'en' | 'ar';
@@ -88,10 +89,11 @@ const en = {
   typeDelete: 'Type DELETE to confirm', deleteAllDone: 'All your data was deleted', deleteAllFail: 'Deletion failed. Nothing was confirmed as deleted. Try again.',
   loginForData: 'Log in to export or delete your data.',
 };
-type Dict = typeof en;
+type Base = typeof en;
+type Dict = Base & typeof authEn;
 export type TKey = keyof Dict;
 
-const ar: Dict = {
+const ar: Base = {
   appName: 'برين لايت',
   tagline: 'بيت هادئ لتفاصيل حياتك',
   navHome: 'الرئيسية', navCapture: 'التقاط', navMemories: 'الذكريات', navAsk: 'اسأل',
@@ -178,7 +180,7 @@ const ar: Dict = {
   loginForData: 'سجّل الدخول لتصدير بياناتك أو حذفها.',
 };
 
-const dicts: Record<Lang, Dict> = { en, ar };
+const dicts: Record<Lang, Dict> = { en: { ...en, ...authEn }, ar: { ...ar, ...authAr } };
 type Ctx = { lang: Lang; dir: 'ltr' | 'rtl'; setLang: (l: Lang) => void; t: (k: TKey) => string };
 const I18nContext = createContext<Ctx | null>(null);
 

@@ -1,65 +1,137 @@
-import { useCallback, useEffect, useState } from 'react';
-import type { AuthUser } from '@workspace/api-client-react';
+import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
-export type { AuthUser };
+// Cookie-session email/password auth. Contract: /api/auth/*
+export type AuthLanguage = 'en' | 'ar';
+export type AuthTheme = 'system' | 'light' | 'dark';
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  name: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  profileImageUrl?: string | null;
+  language: AuthLanguage;
+  theme: AuthTheme;
+  onboardingCompleted: boolean;
+}
+
+export interface SignupInput { email: string; password: string; name: string; language: AuthLanguage; theme: AuthTheme }
+export interface ProfileUpdate { name?: string; language?: AuthLanguage; theme?: AuthTheme; onboardingCompleted?: boolean }
+
+export class AuthError extends Error {
+  status: number;
+  constructor(status: number, message: string) { super(message); this.status = status; this.name = 'AuthError'; }
+}
+
+async function call<T>(path: string, method: string, body?: unknown): Promise<T> {
+  let res: Response;
+  try {
+    res = await fetch(`/api/auth/${path}`, {
+      method,
+      credentials: 'include',
+      headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+  } catch {
+    throw new AuthError(0, 'network');
+  }
+  if (!res.ok) {
+    let msg = `HTTP ${res.status}`;
+    try { const j = await res.json(); if (j && typeof j.error === 'string') msg = j.error; } catch { /* ignore */ }
+    throw new AuthError(res.status, msg);
+  }
+  if (res.status === 204) return undefined as T;
+  return (await res.json()) as T;
+}
+
+type Status = 'loading' | 'ready' | 'error';
 
 interface AuthState {
   user: AuthUser | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  status: Status;
+  /** Navigate to the login page (compat). */
   login: () => void;
-  logout: () => void;
+  /** Ends the session and clears the user. */
+  logout: () => Promise<void>;
+  signIn: (email: string, password: string) => Promise<AuthUser>;
+  signUp: (input: SignupInput) => Promise<AuthUser>;
+  refresh: () => Promise<void>;
+  updateProfile: (patch: ProfileUpdate) => Promise<AuthUser | null>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  deleteAccount: (password: string) => Promise<void>;
 }
 
-function getBasePath() {
-  return import.meta.env.BASE_URL.replace(/\/+$/, '') || '/';
+const AuthContext = createContext<AuthState | null>(null);
+
+function basePath() { return import.meta.env.BASE_URL.replace(/\/+$/, ''); }
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [status, setStatus] = useState<Status>('loading');
+  const seq = useRef(0);
+
+  const refresh = useCallback(async () => {
+    setStatus('loading');
+    try {
+      const r = await call<{ user: AuthUser | null }>('me', 'GET');
+      setUser(r.user ?? null);
+      setStatus('ready');
+    } catch (e) {
+      setUser(null);
+      setStatus(e instanceof AuthError && e.status === 401 ? 'ready' : 'error');
+    }
+  }, []);
+
+  useEffect(() => { void refresh(); }, [refresh]);
+
+  const signIn = useCallback(async (email: string, password: string) => {
+    const r = await call<{ user: AuthUser }>('login', 'POST', { email, password });
+    seq.current++; setUser(r.user); setStatus('ready');
+    return r.user;
+  }, []);
+
+  const signUp = useCallback(async (input: SignupInput) => {
+    const r = await call<{ user: AuthUser }>('signup', 'POST', input);
+    seq.current++; setUser(r.user); setStatus('ready');
+    return r.user;
+  }, []);
+
+  const logout = useCallback(async () => {
+    try { await call<void>('logout', 'POST'); } finally { seq.current++; setUser(null); setStatus('ready'); }
+  }, []);
+
+  // Last-write-wins: stale responses from earlier PATCHes are ignored.
+  const updateProfile = useCallback(async (patch: ProfileUpdate) => {
+    const mine = ++seq.current;
+    const r = await call<{ user: AuthUser }>('profile', 'PATCH', patch);
+    if (mine === seq.current) { setUser(r.user); return r.user; }
+    return null;
+  }, []);
+
+  const changePassword = useCallback(async (currentPassword: string, newPassword: string) => {
+    await call<void>('password', 'POST', { currentPassword, newPassword });
+  }, []);
+
+  const deleteAccount = useCallback(async (password: string) => {
+    await call<void>('account', 'DELETE', { confirmation: 'DELETE', password });
+    seq.current++; setUser(null); setStatus('ready');
+  }, []);
+
+  const login = useCallback(() => { window.location.href = `${basePath()}/login`; }, []);
+
+  const value = useMemo<AuthState>(() => ({
+    user, status, isLoading: status === 'loading', isAuthenticated: !!user,
+    login, logout, signIn, signUp, refresh, updateProfile, changePassword, deleteAccount,
+  }), [user, status, login, logout, signIn, signUp, refresh, updateProfile, changePassword, deleteAccount]);
+
+  return createElement(AuthContext.Provider, { value }, children);
 }
 
 export function useAuth(): AuthState {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    fetch('/api/auth/user', { credentials: 'include' })
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json() as Promise<{ user: AuthUser | null }>;
-      })
-      .then((data) => {
-        if (!cancelled) {
-          setUser(data.user ?? null);
-          setIsLoading(false);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setUser(null);
-          setIsLoading(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const login = useCallback(() => {
-    const base = getBasePath();
-    window.location.href = `/api/login?returnTo=${encodeURIComponent(base)}`;
-  }, []);
-
-  const logout = useCallback(() => {
-    const base = getBasePath();
-    window.location.href = `/api/logout?returnTo=${encodeURIComponent(base)}`;
-  }, []);
-
-  return {
-    user,
-    isLoading,
-    isAuthenticated: !!user,
-    login,
-    logout,
-  };
+  const c = useContext(AuthContext);
+  if (!c) throw new Error('useAuth must be used inside <AuthProvider>');
+  return c;
 }

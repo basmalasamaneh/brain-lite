@@ -3,7 +3,8 @@ import { and, eq, inArray } from "drizzle-orm";
 import { db, memoriesTable, uploadsTable, usersTable } from "@workspace/db";
 import { AskBrainBody, AskBrainResponse, DeleteBrainDataBody, DeleteBrainDataResponse, ExportBrainDataResponse } from "@workspace/api-zod";
 import { ObjectNotFoundError, ObjectStorageService } from "../lib/objectStorage";
-import { activeCaptures, activeUploadRequests, deletingUsers } from "../lib/brain-state";
+import { activeCaptures, activeQuestions as activeUserQuestions, activeUploadRequests, deletingUsers } from "../lib/brain-state";
+import rateLimit from "express-rate-limit";
 import {
   generateGroundedAnswer, noDataAnswer, parseGroundedAnswer, prepareContext,
   type CompactMemory,
@@ -13,6 +14,8 @@ const router: IRouter = Router();
 const storage = new ObjectStorageService();
 let activeQuestions = 0;
 const MAX_CONCURRENT_QUESTIONS = 4;
+const askLimiter = rateLimit({ windowMs: 60 * 60 * 1000, limit: 30,
+  keyGenerator: (req) => req.user!.id, message: { error: "AI request limit reached. Retry later." } });
 
 router.use("/brain", (req, res, next) => {
   res.setHeader("Cache-Control", "private, no-store");
@@ -28,7 +31,7 @@ function serializeMemory(row: typeof memoriesTable.$inferSelect) {
   return { ...memory, created_at: row.created_at.toISOString() };
 }
 
-router.post("/brain/ask", async (req, res): Promise<void> => {
+router.post("/brain/ask", askLimiter, async (req, res): Promise<void> => {
   const parsed = AskBrainBody.safeParse(req.body);
   if (!parsed.success || !parsed.data.question.trim()) {
     res.status(400).json({ error: "A valid question and language are required" });
@@ -43,6 +46,7 @@ router.post("/brain/ask", async (req, res): Promise<void> => {
     return;
   }
   activeQuestions++;
+  activeUserQuestions.set(req.user!.id, (activeUserQuestions.get(req.user!.id) ?? 0) + 1);
   try {
     const { question, language } = parsed.data;
     // Deliberately exclude raw text, attachments, extra fields and other users.
@@ -91,6 +95,9 @@ router.post("/brain/ask", async (req, res): Promise<void> => {
     res.status(503).json({ error: "Unable to safely answer from your memories. Please retry later." });
   } finally {
     activeQuestions--;
+    const remaining = (activeUserQuestions.get(req.user!.id) ?? 1) - 1;
+    if (remaining) activeUserQuestions.set(req.user!.id, remaining);
+    else activeUserQuestions.delete(req.user!.id);
   }
 });
 
@@ -109,8 +116,8 @@ router.get("/brain/export", async (req, res): Promise<void> => {
     if (!profile) { res.status(503).json({ error: "Profile unavailable" }); return; }
     const payload = ExportBrainDataResponse.parse({
       profile: {
-        id: profile.id, email: profile.email, firstName: profile.firstName,
-        lastName: profile.lastName, profileImageUrl: profile.profileImageUrl,
+        id: profile.id, email: profile.email, name: profile.name,
+        language: profile.language, theme: profile.theme, onboardingCompleted: profile.onboardingCompleted,
         createdAt: profile.createdAt.toISOString(), updatedAt: profile.updatedAt.toISOString(),
       },
       memories: memories.map(serializeMemory),
@@ -130,7 +137,7 @@ router.delete("/brain/data", async (req, res): Promise<void> => {
     return;
   }
   const userId = req.user!.id;
-  if (activeCaptures.has(userId) || activeUploadRequests.has(userId) || deletingUsers.has(userId)) {
+  if (activeCaptures.has(userId) || activeUploadRequests.has(userId) || activeUserQuestions.has(userId) || deletingUsers.has(userId)) {
     res.status(409).json({ error: "A capture, upload request, or deletion is in progress. Please retry shortly." });
     return;
   }

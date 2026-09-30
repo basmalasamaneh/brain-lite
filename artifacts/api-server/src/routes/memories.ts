@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { and, desc, eq, ilike, isNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { db, memoriesTable, uploadsTable } from "@workspace/db";
 import {
   CreateMemoryBody, UpdateMemoryBody, GetMemoryParams,
@@ -10,8 +10,11 @@ import { extractMemory } from "../lib/extraction";
 import { CaptureFileError, MAX_CAPTURE_FILE_BYTES, readCaptureFile } from "../lib/capture-file";
 import { createCalendarEvent, validEventDate } from "../lib/calendar";
 import { activeCaptures, deletingUsers } from "../lib/brain-state";
+import rateLimit from "express-rate-limit";
 
 const router: IRouter = Router();
+const captureLimiter = rateLimit({ windowMs: 60 * 60 * 1000, limit: 30,
+  keyGenerator: (req) => req.user!.id, message: { error: "AI request limit reached. Retry later." } });
 
 // Personal data must never be cached by an intermediary.
 router.use("/memories", (_req, res, next) => {
@@ -24,7 +27,7 @@ router.use("/memories", (_req, res, next) => {
 });
 
 router.get("/memories/stats", async (req, res): Promise<void> => {
-  const scope = req.user ? eq(memoriesTable.userId, req.user.id) : isNull(memoriesTable.userId);
+  const scope = eq(memoriesTable.userId, req.user!.id);
   const [stats] = await db.select({
     total: sql<number>`count(*)::int`,
     needs_review: sql<number>`count(*) filter (where ${memoriesTable.status} = 'needs_review')::int`,
@@ -36,7 +39,7 @@ router.get("/memories/stats", async (req, res): Promise<void> => {
 router.get("/memories", async (req, res): Promise<void> => {
   const parsed = ListMemoriesQueryParams.safeParse(req.query);
   if (!parsed.success) { res.status(400).json({ error: "Invalid filters" }); return; }
-  const scope = req.user ? eq(memoriesTable.userId, req.user.id) : isNull(memoriesTable.userId);
+  const scope = eq(memoriesTable.userId, req.user!.id);
   const { type, search, status } = parsed.data;
   const rows = await db.select().from(memoriesTable).where(and(
     scope,
@@ -57,7 +60,7 @@ router.get("/memories/:id/calendar", async (req, res): Promise<void> => {
   if (!parsed.success) { res.status(400).json({ error: "Invalid memory ID" }); return; }
   const [row] = await db.select().from(memoriesTable).where(and(
     eq(memoriesTable.id, parsed.data.id),
-    req.user ? eq(memoriesTable.userId, req.user.id) : isNull(memoriesTable.userId),
+    eq(memoriesTable.userId, req.user!.id),
   ));
   if (!row) { res.status(404).json({ error: "Memory not found" }); return; }
   if (row.type !== "appointment" || !row.event_date || !validEventDate(row.event_date)) {
@@ -73,13 +76,18 @@ router.get("/memories/:id", async (req, res): Promise<void> => {
   if (!parsed.success) { res.status(400).json({ error: "Invalid memory ID" }); return; }
   const [row] = await db.select().from(memoriesTable).where(and(
     eq(memoriesTable.id, parsed.data.id),
-    req.user ? eq(memoriesTable.userId, req.user.id) : isNull(memoriesTable.userId),
+    eq(memoriesTable.userId, req.user!.id),
   ));
   if (!row) { res.status(404).json({ error: "Memory not found" }); return; }
   res.json(GetMemoryResponse.parse(serialize(row)));
 });
 
-router.post("/memories", async (req, res): Promise<void> => {
+router.delete("/memories/samples", async (req, res): Promise<void> => {
+  await db.delete(memoriesTable).where(and(eq(memoriesTable.userId, req.user!.id), eq(memoriesTable.is_sample, true)));
+  res.sendStatus(204);
+});
+
+router.post("/memories", captureLimiter, async (req, res): Promise<void> => {
   if (!req.isAuthenticated()) { res.status(401).json({ error: "Please sign in to save memories" }); return; }
   const parsed = CreateMemoryBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid capture" }); return; }
