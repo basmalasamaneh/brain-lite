@@ -10,6 +10,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Wordmark } from '@/components/brand';
 import { PageTransition } from '@/components/motion';
 import { cn } from '@/lib/utils';
+import { InstallPrompt } from '@/components/install-prompt';
+import { useMobileKeyboard } from '@/hooks/use-mobile-keyboard';
 
 const nav: { href: string; key: TKey; icon: typeof Home }[] = [
   { href: '/', key: 'navHome', icon: Home },
@@ -109,6 +111,7 @@ function Logo() {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
+  useMobileKeyboard();
   const [loc] = useLocation();
   const { t } = useI18n();
   const reduce = useReducedMotion();
@@ -141,7 +144,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      <header className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-border bg-background/85 px-4 py-2 backdrop-blur md:hidden">
+      <header className="mobile-safe-header sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-border bg-background/85 px-4 py-2 backdrop-blur md:hidden">
         <Logo />
         <div className="flex items-center">
           <LangSwitch compact />
@@ -149,14 +152,15 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      <main id="main" className="md:ps-72">
-        <div className="mx-auto w-full min-w-0 max-w-5xl px-4 pb-36 pt-6 sm:px-8 md:pb-16 md:pt-12">
+      <main id="main" tabIndex={-1} className="md:ps-72">
+        <InstallPrompt />
+        <div className="mobile-page-content mx-auto w-full min-w-0 max-w-5xl px-4 pb-36 pt-6 sm:px-8 md:pb-16 md:pt-12">
           <PageTransition routeKey={loc}>{children}</PageTransition>
         </div>
         <div className="px-4 pb-32 md:hidden"><div className="rounded-2xl border border-border bg-card p-2"><AuthBlock /></div></div>
       </main>
 
-      <nav aria-label={t('mainNav')} className="fixed inset-x-3 bottom-3 z-40 grid grid-cols-5 items-end rounded-2xl border border-gold-400/30 bg-card/95 px-1 pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-1.5 lux-shadow backdrop-blur md:hidden">
+      <nav aria-label={t('mainNav')} className="mobile-bottom-tabs fixed inset-x-3 z-40 grid grid-cols-5 items-end rounded-2xl border border-gold-400/30 bg-card/95 px-1 pt-1.5 lux-shadow backdrop-blur md:hidden">
         {nav.map(({ href, key, icon: Icon }) => {
           const active = isActive(loc, href);
           if (href === '/capture') return (

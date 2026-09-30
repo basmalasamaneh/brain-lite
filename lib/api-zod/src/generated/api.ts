@@ -9,6 +9,88 @@ import * as zod from 'zod';
 
 
 /**
+ * Authenticated. Maximum 5 MiB decoded audio and 120 seconds. 30 AI captures per user per hour. Audio is discarded unless keep_recording is true.
+ */
+export const captureVoiceBodyAudioBase64Min = 4;
+export const captureVoiceBodyAudioBase64Max = 6990508;
+
+export const captureVoiceBodyTimezoneMax = 100;
+
+export const captureVoiceBodyKeepRecordingDefault = false;
+
+export const CaptureVoiceBody = zod.object({
+  "audio_base64": zod.string().min(captureVoiceBodyAudioBase64Min).max(captureVoiceBodyAudioBase64Max).describe('Canonical padded base64; decoded bytes must be at most 5242880.'),
+  "mime_type": zod.string().describe('audio/webm, audio/ogg, audio/mp4, audio/mpeg or audio/wav; optional codecs parameter.'),
+  "language": zod.enum(['en', 'ar']),
+  "timezone": zod.string().min(1).max(captureVoiceBodyTimezoneMax).describe('Valid IANA timezone.'),
+  "keep_recording": zod.boolean().default(captureVoiceBodyKeepRecordingDefault)
+})
+
+
+
+
+export const CaptureVoiceResponse = zod.object({
+  "transcript": zod.string(),
+  "memories": zod.array(zod.object({
+  "id": zod.number().int(),
+  "is_sample": zod.boolean(),
+  "type": zod.enum(['appointment', 'receipt', 'task', 'idea', 'document', 'note', 'other']),
+  "title": zod.string(),
+  "summary": zod.string().nullable(),
+  "raw_text": zod.string(),
+  "transcript": zod.string().nullable(),
+  "event_date": zod.string().nullable(),
+  "amount": zod.number().nullable(),
+  "currency": zod.string().nullable(),
+  "people": zod.array(zod.string()),
+  "tags": zod.array(zod.string()),
+  "confidence": zod.number().int(),
+  "status": zod.enum(['confirmed', 'needs_review']),
+  "file_path": zod.string().nullable(),
+  "created_at": zod.string(),
+  "extra": zod.record(zod.string(), zod.unknown()).optional(),
+  "extraction_status": zod.enum(['legacy', 'processing', 'extracted', 'fallback']).optional(),
+  "extraction_error": zod.union([zod.literal(null),zod.literal('not_configured'),zod.literal('unavailable'),zod.literal('invalid_response'),zod.literal('unsupported_file')]).nullish()
+})).min(1)
+})
+
+
+/**
+ * Opt-in plain note from a recovered or manually entered transcript; no AI and no audio upload.
+ */
+export const saveVoicePlainNoteBodyTranscriptMax = 100000;
+
+
+
+export const SaveVoicePlainNoteBody = zod.object({
+  "transcript": zod.string().min(1).max(saveVoicePlainNoteBodyTranscriptMax),
+  "language": zod.enum(['en', 'ar'])
+})
+
+export const SaveVoicePlainNoteResponse = zod.object({
+  "id": zod.number().int(),
+  "is_sample": zod.boolean(),
+  "type": zod.enum(['appointment', 'receipt', 'task', 'idea', 'document', 'note', 'other']),
+  "title": zod.string(),
+  "summary": zod.string().nullable(),
+  "raw_text": zod.string(),
+  "transcript": zod.string().nullable(),
+  "event_date": zod.string().nullable(),
+  "amount": zod.number().nullable(),
+  "currency": zod.string().nullable(),
+  "people": zod.array(zod.string()),
+  "tags": zod.array(zod.string()),
+  "confidence": zod.number().int(),
+  "status": zod.enum(['confirmed', 'needs_review']),
+  "file_path": zod.string().nullable(),
+  "created_at": zod.string(),
+  "extra": zod.record(zod.string(), zod.unknown()).optional(),
+  "extraction_status": zod.enum(['legacy', 'processing', 'extracted', 'fallback']).optional(),
+  "extraction_error": zod.union([zod.literal(null),zod.literal('not_configured'),zod.literal('unavailable'),zod.literal('invalid_response'),zod.literal('unsupported_file')]).nullish()
+})
+
+
+/**
  * Authenticated; answers only from the user's memories. Returns 503 if the answer cannot be safely generated.
  */
 export const askBrainBodyQuestionMax = 2000;
@@ -30,6 +112,7 @@ export const AskBrainResponse = zod.object({
   "title": zod.string(),
   "summary": zod.string().nullable(),
   "raw_text": zod.string(),
+  "transcript": zod.string().nullable(),
   "event_date": zod.string().nullable(),
   "amount": zod.number().nullable(),
   "currency": zod.string().nullable(),
@@ -67,6 +150,7 @@ export const ExportBrainDataResponse = zod.object({
   "title": zod.string(),
   "summary": zod.string().nullable(),
   "raw_text": zod.string(),
+  "transcript": zod.string().nullable(),
   "event_date": zod.string().nullable(),
   "amount": zod.number().nullable(),
   "currency": zod.string().nullable(),
@@ -115,6 +199,7 @@ export const ListMemoriesResponseItem = zod.object({
   "title": zod.string(),
   "summary": zod.string().nullable(),
   "raw_text": zod.string(),
+  "transcript": zod.string().nullable(),
   "event_date": zod.string().nullable(),
   "amount": zod.number().nullable(),
   "currency": zod.string().nullable(),
@@ -154,6 +239,7 @@ export const CreateMemoryResponse = zod.object({
   "title": zod.string(),
   "summary": zod.string().nullable(),
   "raw_text": zod.string(),
+  "transcript": zod.string().nullable(),
   "event_date": zod.string().nullable(),
   "amount": zod.number().nullable(),
   "currency": zod.string().nullable(),
@@ -190,6 +276,7 @@ export const GetMemoryResponse = zod.object({
   "title": zod.string(),
   "summary": zod.string().nullable(),
   "raw_text": zod.string(),
+  "transcript": zod.string().nullable(),
   "event_date": zod.string().nullable(),
   "amount": zod.number().nullable(),
   "currency": zod.string().nullable(),
@@ -211,6 +298,8 @@ export const UpdateMemoryParams = zod.object({
 
 export const updateMemoryBodyTitleMax = 200;
 
+export const updateMemoryBodyTranscriptMax = 100000;
+
 export const updateMemoryBodyRawTextMax = 100000;
 
 export const updateMemoryBodySummaryMax = 5000;
@@ -227,6 +316,7 @@ export const updateMemoryBodyTagsMax = 50;
 
 export const UpdateMemoryBody = zod.object({
   "title": zod.string().min(1).max(updateMemoryBodyTitleMax).optional(),
+  "transcript": zod.string().max(updateMemoryBodyTranscriptMax).nullish(),
   "raw_text": zod.string().max(updateMemoryBodyRawTextMax).optional(),
   "summary": zod.string().max(updateMemoryBodySummaryMax).nullish(),
   "type": zod.enum(['appointment', 'receipt', 'task', 'idea', 'document', 'note', 'other']).optional(),
@@ -246,6 +336,7 @@ export const UpdateMemoryResponse = zod.object({
   "title": zod.string(),
   "summary": zod.string().nullable(),
   "raw_text": zod.string(),
+  "transcript": zod.string().nullable(),
   "event_date": zod.string().nullable(),
   "amount": zod.number().nullable(),
   "currency": zod.string().nullable(),

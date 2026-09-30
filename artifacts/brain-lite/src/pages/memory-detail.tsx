@@ -11,8 +11,9 @@ import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescript
 import { EmptyState, ErrorState, SampleBanner, StatusPill, Surface, TypeChip, btnDanger, btnGhost, btnPrimary, fieldCls , Skeleton } from '@/components/kit';
 import { IconCircle, OrnamentDivider } from '@/components/brand';
 import { cn } from '@/lib/utils';
+import { voiceText } from '@/lib/i18n-voice';
 
-type Draft = { title: string; raw_text: string; summary: string; type: MemoryType; status: MemoryStatus; date: string; time: string; amount: string; currency: string; people: string; tags: string; extra: string };
+type Draft = { title: string; raw_text: string; transcript: string; summary: string; type: MemoryType; status: MemoryStatus; date: string; time: string; amount: string; currency: string; people: string; tags: string; extra: string };
 
 const splitIso = (iso: string | null) => {
   if (!iso) return { date: '', time: '' };
@@ -34,7 +35,7 @@ const buildIso = (d: Draft, original: string | null): string | null => {
 };
 
 const toDraft = (m: Memory): Draft => ({
-  title: m.title, raw_text: m.raw_text, summary: m.summary ?? '', type: m.type, status: m.status,
+  title: m.title, raw_text: m.raw_text, transcript: (m as Memory & { transcript?: string | null }).transcript ?? '', summary: m.summary ?? '', type: m.type, status: m.status,
   ...splitIso(m.event_date), amount: m.amount == null ? '' : String(m.amount),
   currency: m.currency ?? '', people: m.people.join(', '), tags: m.tags.join(', '),
   extra: m.extra && Object.keys(m.extra).length ? JSON.stringify(m.extra, null, 2) : '',
@@ -114,6 +115,7 @@ export default function MemoryDetailPage() {
     if (Object.keys(e).length) return;
     send({
       title: draft.title.trim(), raw_text: draft.raw_text, summary: draft.summary.trim() || null, type: draft.type, status: draft.status,
+      ...((m as Memory & { transcript?: string | null })?.transcript != null ? { transcript: draft.transcript } : {}),
       event_date: buildIso(draft, m?.event_date ?? null), amount: amt, extra, currency: draft.currency.trim().toUpperCase() || null,
       people: splitList(draft.people), tags: splitList(draft.tags),
     }, () => setDraft(null));
@@ -143,7 +145,9 @@ export default function MemoryDetailPage() {
   }
 
   const amount = formatAmount(m.amount, m.currency, lang);
-  const isImage = m.file_path && !/\.pdf$/i.test(m.file_path);
+  const isAudio = m.file_path && m.extra?.attachment_kind === 'audio' &&
+    typeof m.extra.audio_mime_type === 'string' && /^audio\/(?:webm|mp4|ogg|mpeg|wav)(?:;\s*codecs=[a-zA-Z0-9.,_-]+)?$/.test(m.extra.audio_mime_type);
+  const isImage = m.file_path && m.extra?.attachment_kind !== 'audio' && !/\.pdf$/i.test(m.file_path);
 
   return (
     <>
@@ -180,6 +184,7 @@ export default function MemoryDetailPage() {
             <div className="sm:col-span-2"><Field label={t('fSummary')}><textarea value={draft.summary} onChange={(e) => set('summary', e.target.value)} maxLength={5000} rows={3} className={fieldCls} data-testid="input-summary" /></Field></div>
             <div className="sm:col-span-2"><Field label={t('fExtra')} error={errors.extra && t(errors.extra)}><textarea value={draft.extra} onChange={(e) => set('extra', e.target.value)} rows={5} dir="ltr" spellCheck={false} placeholder='{"store": "…", "items": [], "warranty": "…"}' className={cn(fieldCls, 'font-mono text-xs')} data-testid="input-extra" /></Field></div>
             <div className="sm:col-span-2"><Field label={t('fRaw')}><textarea value={draft.raw_text} onChange={(e) => set('raw_text', e.target.value)} maxLength={100000} rows={8} className={cn(fieldCls, 'leading-relaxed')} data-testid="input-raw" /></Field></div>
+            {(m as Memory & { transcript?: string | null }).transcript != null && <div className="sm:col-span-2"><Field label={voiceText(lang, 'editTranscript')}><textarea value={draft.transcript} onChange={(e) => set('transcript', e.target.value)} maxLength={100000} rows={6} className={cn(fieldCls, 'leading-relaxed')} data-testid="input-transcript" /></Field></div>}
           </Surface>
           {saveError && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-danger-ink">{t('errSave')}</p>}
           <div className="sticky bottom-24 z-20 -mx-2 flex justify-end gap-3 rounded-2xl border border-border bg-background/90 p-2 backdrop-blur md:static md:mx-0 md:border-0 md:bg-transparent md:p-0">
@@ -200,8 +205,14 @@ export default function MemoryDetailPage() {
             <h2 className="eyebrow mb-2 text-gold">{t('fRaw')}</h2>
             {m.extra && Object.keys(m.extra).length > 0 && <div className="mb-6 rounded-xl border border-border bg-background/60 p-4"><ExtraSummary extra={m.extra} /></div>}
             <p className="whitespace-pre-wrap leading-relaxed text-foreground/85" data-testid="text-raw">{m.raw_text || t('noText')}</p>
+            {(m as Memory & { transcript?: string | null }).transcript != null && <details className="mt-6 rounded-xl border border-gold-400/40 bg-background/60 p-4" data-testid="section-transcript">
+              <summary className="min-h-11 cursor-pointer py-2 font-medium text-gold">{voiceText(lang, 'transcript')}</summary>
+              <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{(m as Memory & { transcript?: string | null }).transcript}</p>
+              {isAuthenticated && <button type="button" onClick={() => { setDraft(toDraft(m)); setErrors({}); }} className={cn(btnGhost, 'mt-4')}>{voiceText(lang, 'editTranscript')}</button>}
+            </details>}
             {m.file_path && (
               <div className="mt-6 rounded-xl border border-border bg-background/60 p-3">
+                {isAudio && <audio controls preload="metadata" src={fileUrl(m.file_path)} className="mb-3 w-full" aria-label={voiceText(lang, 'playback')} />}
                 {isImage && <img src={fileUrl(m.file_path)} alt="" className="mb-3 max-h-80 w-full rounded-lg object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />}
                 <a href={fileUrl(m.file_path)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm font-medium text-gold hover:underline" data-testid="link-file">
                   <Paperclip className="h-4 w-4" />{t('openFile')}<ExternalLink className="h-3.5 w-3.5" />

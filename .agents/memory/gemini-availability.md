@@ -10,3 +10,9 @@ Do not treat Gemini's models.list results as proof that a model can generate con
 Test the application's actual structured extraction and grounded-answer prompts as well as a minimal generation probe. A successful short text response does not establish that the model handles the required JSON outputs reliably.
 
 **Why:** Provider capacity errors were intermittent even for a model that passed a minimal probe; application-shaped tests distinguish connectivity from usable end-to-end behavior.
+
+For structured speech extraction, normalize semantically absent optional values without relaxing validation of supplied facts or unknown fields.
+
+**Why:** Real English and Arabic speech produced valid transcripts and separate tasks, but Gemini returned null for an irrelevant currency despite the prompt requesting a string. Rejecting that absence discarded otherwise usable extraction.
+
+**How to apply:** Exercise actual audio in the target languages; allow explicit null/absence only for optional values, and keep incorrect types and invented facts rejected.

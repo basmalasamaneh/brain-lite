@@ -1,0 +1,16 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "szFgndNHDrZPzNuTACjOl"
+uri = "file://attached_assets/test-speech-en.mp3"
+type = "audio"
+title = "speech"
+description = "Text-to-speech audio: Remind me to buy a birthday gift tomorrow, and call the dentist next Sunday."
+
+[[outputs]]
+id = "ghsdW7IEh9kxP-M4FW5Kk"
+uri = "file://attached_assets/test-speech-ar.mp3"
+type = "audio"
+title = "speech"
+description = "Text-to-speech audio: بكرا ذكّرني أشتري هدية، وكمان أتصل بطبيب الأسنان يوم الأحد الجاي."

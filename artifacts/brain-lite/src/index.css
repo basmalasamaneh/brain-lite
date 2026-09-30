@@ -304,8 +304,10 @@
 }
 
 /* ============ TYPOGRAPHY ============ */
-html { -webkit-text-size-adjust: 100%; }
-body { line-height: 1.6; transition: background-color .35s var(--ease-lux), color .35s var(--ease-lux); }
+html { -webkit-text-size-adjust: 100%; min-height: 100%; scroll-padding-top: calc(5rem + env(safe-area-inset-top, 0px)); }
+body { min-height: 100vh; min-height: 100dvh; overscroll-behavior-y: contain; line-height: 1.6; transition: background-color .35s var(--ease-lux), color .35s var(--ease-lux); }
+button, a, input, textarea, select { -webkit-tap-highlight-color: transparent; }
+button, a, [role='button'] { touch-action: manipulation; }
 html[lang='ar'] body { font-family: 'IBM Plex Sans Arabic', 'Inter', sans-serif; line-height: 1.8; }
 .font-display { font-family: var(--app-font-display); letter-spacing: -0.005em; font-weight: 600; line-height: 1.15; }
 html[lang='ar'] .font-display { font-family: 'Amiri', 'Noto Naskh Arabic', serif; letter-spacing: 0; font-weight: 700; line-height: 1.45; }
@@ -366,6 +368,26 @@ html[lang='ar'] .eyebrow { letter-spacing: 0; text-transform: none; font-size: .
 body::before { content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: .03;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.85'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
 #root { position: relative; z-index: 1; }
+
+/* Mobile chrome stays clear of notches, home indicators and the visual keyboard. */
+.mobile-safe-header { padding-top: calc(.5rem + env(safe-area-inset-top, 0px)); padding-inline-start: max(1rem, env(safe-area-inset-left, 0px)); padding-inline-end: max(1rem, env(safe-area-inset-right, 0px)); }
+.mobile-bottom-tabs { bottom: calc(.75rem + env(safe-area-inset-bottom, 0px)); padding-bottom: .35rem; inset-inline-start: max(.75rem, env(safe-area-inset-left, 0px)); inset-inline-end: max(.75rem, env(safe-area-inset-right, 0px)); }
+@media (max-width: 767px) {
+  .mobile-page-content { padding-bottom: calc(9rem + env(safe-area-inset-bottom, 0px)); padding-inline-start: max(1rem, env(safe-area-inset-left, 0px)); padding-inline-end: max(1rem, env(safe-area-inset-right, 0px)); }
+  /* Shared sticky composers in Capture and Ask: never sit behind the tab bar. */
+  #main .sticky.bottom-24 { bottom: calc(6rem + env(safe-area-inset-bottom, 0px)); }
+  .mobile-keyboard-open .mobile-bottom-tabs { display: none; }
+  .mobile-keyboard-open #main .sticky.bottom-24 { bottom: 0; }
+  .mobile-keyboard-open .mobile-page-content { padding-bottom: 2rem; }
+  .mobile-keyboard-open .install-hint { display: none; }
+}
+@media (pointer: coarse) {
+  button, [role='button'] { min-height: 44px; min-width: 44px; }
+}
+@media (max-width: 767px) {
+  /* iOS Safari zooms focused text controls smaller than 16px. */
+  input:not([type='checkbox']):not([type='radio']), textarea, select { font-size: max(16px, 1em); }
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }

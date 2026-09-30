@@ -38,7 +38,11 @@ import type {
   ProfileInput,
   SignUpInput,
   UploadUrlRequest,
-  UploadUrlResponse
+  UploadUrlResponse,
+  VoiceCaptureError,
+  VoiceCaptureInput,
+  VoiceCaptureResult,
+  VoicePlainInput
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -67,6 +71,176 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getCaptureVoiceUrl = () => {
+
+
+
+
+  return `/api/capture/voice`
+}
+
+/**
+ * Authenticated. Maximum 5 MiB decoded audio and 120 seconds. 30 AI captures per user per hour. Audio is discarded unless keep_recording is true.
+ */
+export const captureVoice = async (voiceCaptureInput: VoiceCaptureInput, options?: Parameters<typeof customFetch>[1]): Promise<VoiceCaptureResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<VoiceCaptureResult>(getCaptureVoiceUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(voiceCaptureInput)
+  }
+);}
+
+
+
+
+
+export const getCaptureVoiceMutationKey = () => ['captureVoice'] as const;
+
+export const getCaptureVoiceMutationOptions = <TError = ErrorType<void | VoiceCaptureError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof captureVoice>>, TError,CaptureVoiceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof captureVoice>>, TError,CaptureVoiceMutationVariables, TContext> => {
+
+const mutationKey = getCaptureVoiceMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof captureVoice>>, CaptureVoiceMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  captureVoice(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CaptureVoiceMutationResult = NonNullable<Awaited<ReturnType<typeof captureVoice>>>
+    export type CaptureVoiceMutationBody = BodyType<VoiceCaptureInput>
+    export type CaptureVoiceMutationError = ErrorType<void | VoiceCaptureError>
+    export type CaptureVoiceMutationVariables = {data: BodyType<VoiceCaptureInput>}
+
+    export const useCaptureVoice = <TError = ErrorType<void | VoiceCaptureError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof captureVoice>>, TError,CaptureVoiceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof captureVoice>>,
+        TError,
+        CaptureVoiceMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCaptureVoiceMutationOptions(options));
+    }
+
+export const getSaveVoicePlainNoteUrl = () => {
+
+
+
+
+  return `/api/capture/voice/plain`
+}
+
+/**
+ * Opt-in plain note from a recovered or manually entered transcript; no AI and no audio upload.
+ */
+export const saveVoicePlainNote = async (voicePlainInput: VoicePlainInput, options?: Parameters<typeof customFetch>[1]): Promise<Memory> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Memory>(getSaveVoicePlainNoteUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(voicePlainInput)
+  }
+);}
+
+
+
+
+
+export const getSaveVoicePlainNoteMutationKey = () => ['saveVoicePlainNote'] as const;
+
+export const getSaveVoicePlainNoteMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveVoicePlainNote>>, TError,SaveVoicePlainNoteMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof saveVoicePlainNote>>, TError,SaveVoicePlainNoteMutationVariables, TContext> => {
+
+const mutationKey = getSaveVoicePlainNoteMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveVoicePlainNote>>, SaveVoicePlainNoteMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  saveVoicePlainNote(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SaveVoicePlainNoteMutationResult = NonNullable<Awaited<ReturnType<typeof saveVoicePlainNote>>>
+    export type SaveVoicePlainNoteMutationBody = BodyType<VoicePlainInput>
+    export type SaveVoicePlainNoteMutationError = ErrorType<void>
+    export type SaveVoicePlainNoteMutationVariables = {data: BodyType<VoicePlainInput>}
+
+    export const useSaveVoicePlainNote = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveVoicePlainNote>>, TError,SaveVoicePlainNoteMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof saveVoicePlainNote>>,
+        TError,
+        SaveVoicePlainNoteMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSaveVoicePlainNoteMutationOptions(options));
+    }
 
 export const getAskBrainUrl = () => {
 

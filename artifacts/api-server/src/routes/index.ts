@@ -4,6 +4,7 @@ import authRouter from "./auth";
 import storageRouter from "./storage";
 import memoriesRouter from "./memories";
 import brainRouter from "./brain";
+import voiceRouter from "./voice";
 
 const router: IRouter = Router();
 
@@ -12,5 +13,6 @@ router.use(authRouter);
 router.use(storageRouter);
 router.use(memoriesRouter);
 router.use(brainRouter);
+router.use(voiceRouter);
 
 export default router;

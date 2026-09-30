@@ -12,6 +12,8 @@ import { useToast } from '@/hooks/use-toast';
 import { PageHeader, SampleBanner, Surface, btnPrimary, fieldCls } from '@/components/kit';
 import { cn } from '@/lib/utils';
 import { UnderstandingSkeleton } from '@/components/extraction';
+import { VoiceCapture } from '@/components/voice-capture';
+import { voiceText } from '@/lib/i18n-voice';
 
 function resolveType(f: File): string {
   if (f.type) return f.type === 'image/jpg' ? 'image/jpeg' : f.type;
@@ -124,7 +126,7 @@ export default function CapturePage() {
       <SampleBanner />
       <PageHeader eyebrow={t('captureEyebrow')} title={t('captureTitle')} lead={t('captureLead')} />
 
-      <div className="rise mb-6 grid grid-cols-3 gap-2 sm:gap-4" role="group" aria-label={t('captureTitle')}>
+      <div className="rise grid grid-cols-4 gap-2 sm:gap-4" role="group" aria-label={t('captureTitle')}>
         {options.map(({ k, hint, icon, onClick, id }) => (
           <button key={id} type="button" onClick={onClick} disabled={busy} data-testid={`button-option-${id}`}
             className="lift group flex min-h-24 min-w-0 flex-col items-center gap-2 rounded-2xl border border-card-border bg-card p-3 text-center soft-shadow hover:border-gold-400/60 active:scale-[0.97] disabled:opacity-50 sm:flex-row sm:p-4 sm:text-start">
@@ -135,7 +137,9 @@ export default function CapturePage() {
             </span>
           </button>
         ))}
+        <VoiceCapture disabled={busy || authLoading} needsLogin={!authLoading && !isAuthenticated} onLogin={login} />
       </div>
+      <p className="mb-6 mt-2 text-center text-xs leading-relaxed text-muted-foreground">{voiceText(lang, 'privacyDefault')}</p>
 
       {stepIdx >= 0 && (
         <ol className="rise mb-5 flex items-center gap-2 rounded-2xl border border-gold-400/40 bg-gold-soft/60 p-3 sm:p-4" aria-label={t('progressLabel')} aria-live="polite" data-testid="capture-steps">

@@ -5,21 +5,31 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-export type BrainQuestionLanguage = typeof BrainQuestionLanguage[keyof typeof BrainQuestionLanguage];
+export type VoiceCaptureInputLanguage = typeof VoiceCaptureInputLanguage[keyof typeof VoiceCaptureInputLanguage];
 
 
-export const BrainQuestionLanguage = {
+export const VoiceCaptureInputLanguage = {
   en: 'en',
   ar: 'ar',
 } as const;
 
-export interface BrainQuestion {
+export interface VoiceCaptureInput {
   /**
-     * @minLength 1
-     * @maxLength 2000
+     * Canonical padded base64; decoded bytes must be at most 5242880.
+     * @minLength 4
+     * @maxLength 6990508
      */
-  question: string;
-  language: BrainQuestionLanguage;
+  audio_base64: string;
+  /** audio/webm, audio/ogg, audio/mp4, audio/mpeg or audio/wav; optional codecs parameter. */
+  mime_type: string;
+  language: VoiceCaptureInputLanguage;
+  /**
+     * Valid IANA timezone.
+     * @minLength 1
+     * @maxLength 100
+     */
+  timezone: string;
+  keep_recording?: boolean;
 }
 
 export type MemoryType = typeof MemoryType[keyof typeof MemoryType];
@@ -77,6 +87,8 @@ export interface Memory {
   summary: string | null;
   raw_text: string;
   /** @nullable */
+  transcript: string | null;
+  /** @nullable */
   event_date: string | null;
   /** @nullable */
   amount: number | null;
@@ -93,6 +105,53 @@ export interface Memory {
   extraction_status?: MemoryExtractionStatus;
   /** @nullable */
   extraction_error?: MemoryExtractionError;
+}
+
+export interface VoiceCaptureResult {
+  transcript: string;
+  /** @minItems 1 */
+  memories: Memory[];
+}
+
+export interface VoiceCaptureError {
+  error: string;
+  code: string;
+  /** Only when speech was recovered; explicit user opt-in is required to save. */
+  transcript?: string;
+}
+
+export type VoicePlainInputLanguage = typeof VoicePlainInputLanguage[keyof typeof VoicePlainInputLanguage];
+
+
+export const VoicePlainInputLanguage = {
+  en: 'en',
+  ar: 'ar',
+} as const;
+
+export interface VoicePlainInput {
+  /**
+     * @minLength 1
+     * @maxLength 100000
+     */
+  transcript: string;
+  language: VoicePlainInputLanguage;
+}
+
+export type BrainQuestionLanguage = typeof BrainQuestionLanguage[keyof typeof BrainQuestionLanguage];
+
+
+export const BrainQuestionLanguage = {
+  en: 'en',
+  ar: 'ar',
+} as const;
+
+export interface BrainQuestion {
+  /**
+     * @minLength 1
+     * @maxLength 2000
+     */
+  question: string;
+  language: BrainQuestionLanguage;
 }
 
 export interface BrainAnswer {
@@ -319,6 +378,11 @@ export interface MemoryUpdate {
      * @maxLength 200
      */
   title?: string;
+  /**
+     * @maxLength 100000
+     * @nullable
+     */
+  transcript?: string | null;
   /** @maxLength 100000 */
   raw_text?: string;
   /**

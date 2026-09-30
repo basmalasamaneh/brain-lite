@@ -14,6 +14,14 @@ A bilingual, mobile-first personal second brain for capturing text, photos, and 
 - `GEMINI_API_KEY` — set only through Secrets; missing key saves an explicitly labeled plain-note fallback.
 - `GEMINI_MODEL` — configurable Gemini model, defaults to `gemini-3.1-flash-lite`. Verify both structured capture extraction and grounded Ask with synthetic content before switching models; a model listing alone does not establish usability.
 
+## Voice and mobile/PWA safeguards
+
+- Voice capture supports English, Arabic, and mixed speech, with a two-minute / 5 MiB limit. Keep recordings off by default. Never invent a transcript when transcription fails; plain-note recovery requires explicit user action.
+- Treat microphone streams and recording blobs as ephemeral: release tracks on stop, cancel, backgrounding, and unmount. Do not add an offline recording queue without explicit product approval.
+- Retained recordings must remain private, owned, and discoverable for account/data deletion, including uncertain upload outcomes. Preserve upload metadata when remote cleanup cannot be confirmed.
+- The production-only service worker caches only versioned static assets and a neutral bilingual offline page. Never cache API responses, private memories, uploads, audio, or authenticated page responses. Installation should be checked from the published standalone site, not the editor iframe.
+- Preserve safe areas, 16px mobile inputs, keyboard-aware forms, and the 44px touch-target minimum in future UI work.
+
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9

@@ -33,7 +33,21 @@ app.use(
     },
   }),
 );
+// The base64 representation of a 5 MiB recording is ~6.99 MiB. Only this
+// specific route gets the larger parser; decoded audio size is checked again.
+app.use("/api/capture/voice", (req, res, next) => {
+  if (req.method === "POST" && req.path === "/") return express.json({ limit: "7mb" })(req, res, next);
+  next();
+});
 app.use(express.json({ limit: "1mb" }));
+app.use((error: unknown, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (req.method === "POST" && req.path === "/api/capture/voice" &&
+    error && typeof error === "object" && "type" in error && error.type === "entity.too.large") {
+    res.status(413).json({ error: "Recording must be 5 MB or smaller.", code: "audio_too_large" });
+    return;
+  }
+  next(error);
+});
 app.use(session({
   secret: sessionSecret,
   name: "brain.sid",

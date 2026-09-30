@@ -20,6 +20,8 @@ export interface Memory {
   summary: string | null;
   raw_text: string;
   /** @nullable */
+  transcript: string | null;
+  /** @nullable */
   event_date: string | null;
   /** @nullable */
   amount: number | null;

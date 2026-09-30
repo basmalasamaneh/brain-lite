@@ -15,6 +15,11 @@ export interface MemoryUpdate {
      * @maxLength 200
      */
   title?: string;
+  /**
+     * @maxLength 100000
+     * @nullable
+     */
+  transcript?: string | null;
   /** @maxLength 100000 */
   raw_text?: string;
   /**

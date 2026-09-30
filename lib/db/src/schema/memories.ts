@@ -11,6 +11,7 @@ export const memoriesTable = pgTable("memories", {
   title: text("title").notNull(),
   summary: text("summary"),
   raw_text: text("raw_text").notNull().default(""),
+  transcript: text("transcript"),
   event_date: text("event_date"),
   amount: doublePrecision("amount"),
   currency: text("currency"),

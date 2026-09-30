@@ -11,6 +11,48 @@ tags:
   - name: health
     description: Health operations
 paths:
+  /capture/voice:
+    post:
+      operationId: captureVoice
+      description: Authenticated. Maximum 5 MiB decoded audio and 120 seconds. 30 AI captures per user per hour. Audio is discarded unless keep_recording is true.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/VoiceCaptureInput"}
+      responses:
+        "201":
+          description: Verbatim transcript and separately saved memories for distinct spoken items. Kept recordings have file_path and extra.attachment_kind="audio" plus extra.audio_mime_type; when not kept file_path is null.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/VoiceCaptureResult"}
+        "400": {description: "Invalid input, encoding or mismatched audio signature"}
+        "401": {description: Sign in required}
+        "413": {description: "Audio over 5 MiB, duration over 120 seconds or request too large"}
+        "422": {description: Corrupt audio or no speech}
+        "429": {description: Per-user AI rate limit or active capture}
+        "503":
+          description: Provider, extraction or storage failure. If words were recovered, transcript is present so the user can explicitly save a plain note.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/VoiceCaptureError"}
+  /capture/voice/plain:
+    post:
+      operationId: saveVoicePlainNote
+      description: Opt-in plain note from a recovered or manually entered transcript; no AI and no audio upload.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/VoicePlainInput"}
+      responses:
+        "201":
+          description: Saved plain note
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Memory"}
+        "400": {description: Missing or invalid text}
+        "401": {description: Sign in required}
   /brain/ask:
     post:
       operationId: askBrain
@@ -246,6 +288,36 @@ paths:
                 $ref: "#/components/schemas/HealthStatus"
 components:
   schemas:
+    VoiceCaptureInput:
+      type: object
+      additionalProperties: false
+      required: [audio_base64, mime_type, language, timezone]
+      properties:
+        audio_base64: {type: string, minLength: 4, maxLength: 6990508, description: "Canonical padded base64; decoded bytes must be at most 5242880."}
+        mime_type: {type: string, description: "audio/webm, audio/ogg, audio/mp4, audio/mpeg or audio/wav; optional codecs parameter."}
+        language: {type: string, enum: [en, ar]}
+        timezone: {type: string, minLength: 1, maxLength: 100, description: "Valid IANA timezone."}
+        keep_recording: {type: boolean, default: false}
+    VoiceCaptureResult:
+      type: object
+      required: [transcript, memories]
+      properties:
+        transcript: {type: string}
+        memories: {type: array, minItems: 1, items: {$ref: "#/components/schemas/Memory"}}
+    VoiceCaptureError:
+      type: object
+      required: [error, code]
+      properties:
+        error: {type: string}
+        code: {type: string}
+        transcript: {type: string, description: "Only when speech was recovered; explicit user opt-in is required to save."}
+    VoicePlainInput:
+      type: object
+      additionalProperties: false
+      required: [transcript, language]
+      properties:
+        transcript: {type: string, minLength: 1, maxLength: 100000}
+        language: {type: string, enum: [en, ar]}
     BrainQuestion:
       type: object
       additionalProperties: false
@@ -376,7 +448,7 @@ components:
       enum: [confirmed, needs_review]
     Memory:
       type: object
-      required: [id, type, title, summary, raw_text, event_date, amount, currency, people, tags, confidence, status, file_path, created_at, is_sample]
+      required: [id, type, title, summary, raw_text, transcript, event_date, amount, currency, people, tags, confidence, status, file_path, created_at, is_sample]
       properties:
         id: {type: integer}
         is_sample: {type: boolean}
@@ -384,6 +456,7 @@ components:
         title: {type: string}
         summary: {type: [string, "null"]}
         raw_text: {type: string}
+        transcript: {type: [string, "null"]}
         event_date: {type: [string, "null"]}
         amount: {type: [number, "null"]}
         currency: {type: [string, "null"]}
@@ -415,6 +488,7 @@ components:
       type: object
       properties:
         title: {type: string, minLength: 1, maxLength: 200}
+        transcript: {type: [string, "null"], maxLength: 100000}
         raw_text: {type: string, maxLength: 100000}
         summary: {type: [string, "null"], maxLength: 5000}
         type: {$ref: "#/components/schemas/MemoryType"}
