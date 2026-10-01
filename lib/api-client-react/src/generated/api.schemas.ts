@@ -5,6 +5,84 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type GraphNodeKind = typeof GraphNodeKind[keyof typeof GraphNodeKind];
+
+
+export const GraphNodeKind = {
+  memory: 'memory',
+  space: 'space',
+  person: 'person',
+} as const;
+
+export interface GraphNode {
+  /** Namespaced memory:123, space:uuid or person:normalizedname */
+  id: string;
+  kind: GraphNodeKind;
+  title: string;
+  /** Memory type */
+  type: string;
+  /** @nullable */
+  date: string | null;
+  /** @nullable */
+  status: string | null;
+  /** @nullable */
+  memory_id: number | null;
+  /** @nullable */
+  space_id: string | null;
+  /**
+     * Visible degree for memories; visible member count for Spaces/People
+     * @minimum 0
+     */
+  count: number;
+  /**
+     * Spaces/People only: exact distinct memory count across the full owner-filtered scope before graph capping. Unlike count and memory_ids, this is not limited to visible graph memories.
+     * @minimum 0
+     */
+  total_count?: number;
+  pinned: boolean;
+  /**
+     * Only memory IDs present in this capped graph; memory nodes include their own ID
+     * @maxItems 300
+     */
+  memory_ids: number[];
+}
+
+export type GraphEdgeKind = typeof GraphEdgeKind[keyof typeof GraphEdgeKind];
+
+
+export const GraphEdgeKind = {
+  connection: 'connection',
+  membership: 'membership',
+  mention: 'mention',
+} as const;
+
+export interface GraphEdge {
+  id: string;
+  source: string;
+  target: string;
+  kind: GraphEdgeKind;
+  /** @nullable */
+  relation_type: string | null;
+  /** @nullable */
+  reason: string | null;
+  suggested: boolean;
+  /** @nullable */
+  connection_id: number | null;
+  /** @nullable */
+  created_at: string | null;
+}
+
+export interface LifeGraph {
+  /** @maxItems 300 */
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+  truncated: boolean;
+  /** @minimum 0 */
+  total_memory_count: number;
+  /** @minimum 0 */
+  filtered_memory_count: number;
+}
+
 export interface NotificationTimezoneInput {
   timezone: string;
 }
@@ -597,6 +675,13 @@ export interface BrainQuestion {
      * @maxLength 2000
      */
   question: string;
+  /**
+     * Strictly restrict all retrieval, aggregates, answer context and one-hop expansion to these owned IDs; intersect with space_id when supplied. Unowned or absent IDs must never expose another user's data.
+     * @minItems 1
+     * @maxItems 300
+     * @items.minimum 1
+     */
+  memory_ids?: number[];
   /** Restrict semantic/exact retrieval and SQL totals to confirmed members; permitted confirmed one-hop connections may expand context */
   space_id?: string;
   language: BrainQuestionLanguage;
@@ -886,6 +971,23 @@ export interface HealthStatus {
   status: string;
 }
 
+export type GetGraphParams = {
+/**
+ * Comma-separated appointment,receipt,task,idea,document,note,other
+ * @maxLength 200
+ */
+types?: string;
+space_id?: string;
+from?: string;
+to?: string;
+include_suggested?: boolean;
+/**
+ * @minimum 1
+ * @maximum 300
+ */
+limit?: number;
+};
+
 export type GetPushConfig200 = {
   /** @nullable */
   public_key: string | null;
@@ -986,6 +1088,12 @@ date_to?: string;
 };
 
 export type ListMemoriesParams = {
+/**
+ * Exact people-name match after NFKC normalization, trimming, collapsing whitespace and lower-casing; owner-filtered
+ * @minLength 1
+ * @maxLength 200
+ */
+person?: string;
 type?: string;
 search?: string;
 status?: ListMemoriesStatus;

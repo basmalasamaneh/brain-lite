@@ -2,3 +2,4 @@
 - [Grounded aggregate scope](grounded-aggregate-scope.md) — totals must honor question qualifiers and currencies, not just date filters or semantic top-k.
 - [Background job fences](background-job-fences.md) — preserve PostgreSQL timestamp precision when checking whether AI work is still current.
 - [Notification delivery tradeoff](notification-delivery.md) — preventing duplicate pushes takes priority over retrying uncertain provider outcomes.
+- [Graph question scope](graph-question-scope.md) — graph questions follow the visible selection, not legacy Space Ask expansion.

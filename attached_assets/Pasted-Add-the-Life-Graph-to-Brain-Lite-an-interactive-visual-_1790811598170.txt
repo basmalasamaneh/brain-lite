@@ -1,0 +1,30 @@
+Add the "Life Graph" to Brain Lite: an interactive visual map of a user's memories, Spaces and connections. This app is MOBILE-FIRST: design for touch on a 390px screen first, then adapt to desktop. Do not break any existing feature, and keep the gold design system, EN/AR RTL, auth, per-user data isolation, embeddings, Connect the Dots, Spaces and reminders exactly as they are.
+
+DATA (backend):
+- New endpoint GET /api/graph (authenticated, filters by the logged-in user's id in every query). Query params: space_id (optional), types (optional), from/to dates (optional), limit (default 150).
+- Returns { nodes, edges }. Nodes: memories (id, type, title, date, status), Spaces (id, kind, name, memory_count), and People (from the people field, merged by name, with count). Edges: confirmed memory_links (with relation_type and reason), space membership (confirmed only), and memory-to-person mentions. Never include dismissed or suggested links unless ?include_suggested=true, and mark those as dashed.
+- Performance: cap nodes at the limit by prioritizing pinned Spaces, recent memories and the most-connected nodes; include a `truncated` flag. Add an index if needed. Return only the fields needed (no embeddings, no raw text).
+
+FRONTEND (graph view):
+- Add a "Graph" screen reachable from Home (a gold "Explore your graph" card) and from Memories (a view toggle: List / Graph). Do not overcrowd the bottom tab bar.
+- Render with d3-force (simulation) drawing on HTML Canvas (or SVG if the node count is under 80) for smooth performance on phones. Run the simulation for a limited time then settle; pause it when the tab is hidden.
+- Visual style: a dark or ivory background matching the theme with a faint Islamic geometric pattern; nodes as circles with lucide-style icons by type; Spaces as larger gold-ringed nodes; People as soft round avatar-initial nodes; edges as thin gold lines, dashed for suggested links, thicker for stronger relations. Node size reflects connection count. Use colors from the existing design tokens only.
+- Animation: nodes ease in with a stagger on load (framer-motion or manual tween), a gentle gold pulse on newly added memories, smooth zoom-to-node when selected, and highlight of the selected node's neighbors while fading the rest. Respect prefers-reduced-motion (render a static layout).
+- Touch gestures: one-finger drag to pan, pinch to zoom, double-tap to zoom in, tap a node to select, long-press a node to drag it. Include on-screen zoom in/out and "Recenter" buttons (44px targets) in the thumb zone. Prevent page scroll and pull-to-refresh interfering with the canvas.
+- Tapping a node opens a bottom sheet (safe-area aware, draggable) with: title, type chip, date, short summary, relation reasons to the selected neighbors, and buttons "Open" (goes to the memory or Space page), "Focus here" (re-center the graph on this node with its 2-hop neighborhood) and "Ask about this" (opens Ask restricted to it). Tapping a Space or Person node shows its counts and an Open button.
+- Controls in a top filter bar: search a node by name (smart search, zooms to it), chips for type (Events, Documents, Tasks, Ideas, People, Spaces), a Space picker, and a date range. A "Show suggestions" toggle shows suggested connections as dashed edges with Connect / Dismiss in the node sheet.
+- Legend: a small collapsible legend explaining node types and line styles.
+- Accessibility and fallback: add a "List view" alternative that shows the same data as grouped lists for screen readers, and for devices where canvas performance is poor (detect low frame rate or very large graphs) automatically fall back to a simplified clustered view by Space. Provide aria-labels for controls.
+- Empty state for fewer than 5 memories: a friendly illustration-style ornament and copy ("Your graph grows as you save. Add a few memories and connections will appear."), with a button to Capture.
+- Loading: gold shimmer skeleton, then the animated build-in. Errors: friendly message with Retry.
+- Everything works at 390px with no horizontal scroll, safe areas, full RTL (mirror the UI controls; the graph layout itself does not need mirroring), EN/AR labels in formal natural Arabic, and dark/light themes.
+
+EXTRA:
+- "Insights" strip above the graph: 3 rule-based facts (no AI call) such as "Most connected: Jordan Trip", "3 memories have no connections", "Newest link: Laptop receipt ↔ Warranty". Tapping a fact focuses the graph on it.
+- "Share snapshot": export the current graph view as a PNG image (canvas toDataURL) for sharing, with the Brain Lite logo watermark and without any memory text beyond the node titles the user currently sees; show a short privacy confirmation before exporting.
+
+SECURITY:
+- Every graph query filters by user_id. Return only the current user's nodes and edges. Test with two accounts.
+
+TESTING:
+- Test with about 30 memories, 3 Spaces and several connections; also with 0, 3 and 300 memories for empty state and performance limits. Test pinch/pan on a real phone, node focus, filters, suggested edges, Arabic and English, light and dark, and the reduced-motion and list fallbacks. Then list what you changed.

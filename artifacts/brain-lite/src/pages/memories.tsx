@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'wouter';
-import { ChevronDown, Layers3, Plus, Search, SlidersHorizontal, X } from 'lucide-react';
+import { Link, useLocation, useSearch } from 'wouter';
+import { ChevronDown, Layers3, List, Network, Plus, Search, SlidersHorizontal, User, X } from 'lucide-react';
+import { graphText } from '@/lib/i18n-graph';
 import { useListMemories, getListMemoriesQueryKey } from '@workspace/api-client-react';
 import { useI18n, usePageTitle, type TKey } from '@/lib/i18n';
 import { MEMORY_TYPES, typeMeta } from '@/lib/memory';
@@ -21,6 +22,11 @@ export default function MemoriesPage() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [submitted, setSubmitted] = useState('');
+  const urlSearch = useSearch();
+  const [, navigate] = useLocation();
+  // Exact person filter from the Life Graph (normalized name).
+  const person = new URLSearchParams(urlSearch).get('person')?.trim() ?? '';
+  const gx = graphText(lang);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const activeFilters = Number(!!type) + Number(!!dateFrom) + Number(!!dateTo);
   const invalidDates = !!(dateFrom && dateTo && dateFrom > dateTo);
@@ -29,18 +35,26 @@ export default function MemoriesPage() {
   // Native date input values are YYYY-MM-DD strings. Never convert them to Date:
   // the generated URL serializer uses String(value), not a date-only formatter.
   const filters: SearchFilters = { ...(type ? { type } : {}), ...(dateFrom ? { date_from: dateFrom } : {}), ...(dateTo ? { date_to: dateTo } : {}) };
-  const params = { ...filters, ...(search ? { search } : {}) };
+  const params = { ...filters, ...(search ? { search } : {}), ...(person ? { person } : {}) };
   const list = useListMemories(Object.keys(params).length ? params : undefined, { query: { queryKey: getListMemoriesQueryKey(params), enabled: !invalidDates } });
   const related = useRelatedMemories(submitted, filters, !invalidDates);
-  const filtered = !!(type || q.trim() || search || dateFrom || dateTo);
+  const filtered = !!(type || q.trim() || search || dateFrom || dateTo || person);
   const changeQuestion = (text: string) => { setQ(text); setSubmitted(''); };
-  const clear = () => { changeQuestion(''); setSearch(''); setType(''); setDateFrom(''); setDateTo(''); };
+  const clear = () => { if (person) navigate('/memories'); changeQuestion(''); setSearch(''); setType(''); setDateFrom(''); setDateTo(''); };
 
   return (
     <>
       <SampleBanner />
       <PageHeader eyebrow={t('memoriesEyebrow')} title={t('memoriesTitle')} lead={t('memoriesLead')}
         action={<Link href="/capture" className={cn(btnPrimary, 'hidden md:inline-flex')} data-testid="link-new-memory"><Plus className="h-4 w-4" />{t('captureSomething')}</Link>} />
+
+      <div className="rise mb-4 flex flex-wrap items-center gap-2">
+        <div role="tablist" aria-label={gx.viewToggle} className="inline-flex rounded-xl border border-gold-400/30 bg-card p-1">
+          <span role="tab" aria-selected className="inline-flex min-h-10 items-center gap-1.5 rounded-lg gold-gradient px-3.5 text-sm font-medium text-gold-ink" data-testid="toggle-memories-list"><List className="h-4 w-4" />{gx.viewList}</span>
+          <Link href="/graph" role="tab" aria-selected={false} className="inline-flex min-h-10 items-center gap-1.5 rounded-lg px-3.5 text-sm font-medium text-muted-foreground hover:text-foreground" data-testid="toggle-memories-graph"><Network className="h-4 w-4" />{gx.viewGraph}</Link>
+        </div>
+        {person && <span className="inline-flex min-h-10 max-w-full items-center gap-1.5 rounded-full border border-gold-400/50 bg-gold-soft ps-3 text-sm text-gold" data-testid="chip-person-filter"><User className="h-4 w-4 shrink-0" /><span className="truncate">{gx.personFilter}: {person}</span><button type="button" onClick={() => navigate('/memories')} aria-label={t('clearFilters')} className="grid h-10 w-10 place-items-center rounded-full hover:bg-card" data-testid="button-clear-person"><X className="h-4 w-4" /></button></span>}
+      </div>
 
       <div className="rise smart-search sticky z-20 -mx-4 mb-6 min-w-0 space-y-3 bg-background/95 px-4 py-3 backdrop-blur md:mx-0 md:px-0" style={{ animationDelay: '60ms' }}>
         <form onSubmit={(e) => { e.preventDefault(); if (!invalidDates) { setSearch(q.trim()); setSubmitted(q.trim()); if (submitted === q.trim() && submitted) void related.refetch(); } }} className="relative flex h-12 w-full min-w-0 items-center rounded-xl border border-input bg-card focus-within:border-gold-500">

@@ -34,9 +34,11 @@ import type {
   ConnectionSuggestions,
   CreateConnectionInput,
   DiscoverConnections202,
+  GetGraphParams,
   GetPushConfig200,
   HealthStatus,
   IndexingStatus,
+  LifeGraph,
   ListMemoriesParams,
   ListNotificationDevices200,
   ListNotifications200,
@@ -112,6 +114,87 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetGraphUrl = (params?: GetGraphParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/graph?${stringifiedParams}` : `/api/graph`
+}
+
+/**
+ * Authenticated owner-only graph. Dismissed links are always excluded; only confirmed Space memberships are included. Types is a comma-separated list of memory types. Dates are inclusive calendar dates applied to event_date (or creation date when undated). All node kinds together obey the limit.
+ */
+export const getGraph = async (params?: GetGraphParams, options?: Parameters<typeof customFetch>[1]): Promise<LifeGraph> => {
+
+  return customFetch<LifeGraph>(getGetGraphUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetGraphQueryKey = (params?: GetGraphParams,) => {
+    return [
+    `/api/graph`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetGraphQueryOptions = <TData = Awaited<ReturnType<typeof getGraph>>, TError = ErrorType<void>>(params?: GetGraphParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGraph>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetGraphQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getGraph>>> = ({ signal }) => getGraph(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getGraph>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetGraphQueryResult = NonNullable<Awaited<ReturnType<typeof getGraph>>>
+export type GetGraphQueryError = ErrorType<void>
+
+
+
+export function useGetGraph<TData = Awaited<ReturnType<typeof getGraph>>, TError = ErrorType<void>>(
+ params?: GetGraphParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGraph>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetGraphQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getInitializeNotificationTimezoneUrl = () => {
 

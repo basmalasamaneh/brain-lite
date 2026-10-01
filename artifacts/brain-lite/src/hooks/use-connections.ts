@@ -77,7 +77,7 @@ export function useConnectionAction() {
     onSuccess: (_, input) => {
       qc.invalidateQueries({ predicate: (q) => {
         const key = String(q.queryKey[0] ?? '');
-        return ['/api/connections', '/api/memories', '/api/brain', '/api/search', '/api/indexing'].some((prefix) => key.startsWith(prefix));
+        return ['/api/graph', '/api/connections', '/api/memories', '/api/brain', '/api/search', '/api/indexing'].some((prefix) => key.startsWith(prefix));
       } });
       toast({ title: connectionText(lang, messages[input.action]), ...(input.action === 'discover' ? { description: connectionText(lang, 'queuedBody') } : {}) });
     },

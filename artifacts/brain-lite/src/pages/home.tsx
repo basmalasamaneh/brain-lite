@@ -13,6 +13,7 @@ import { DailyBriefSection } from '@/components/daily-brief';
 import { IconCircle } from '@/components/brand';
 import { HomeSpaces } from '@/components/spaces';
 import { HomeReminders } from '@/components/notifications';
+import { ExploreGraphCard } from '@/components/graph/explore-graph-card';
 export default function HomePage() {
   const { t, lang } = useI18n();
   usePageTitle(t('navHome'));
@@ -41,6 +42,7 @@ export default function HomePage() {
       <DailyBriefSection />
       {isAuthenticated && <HomeReminders />}
       <HomeSpaces />
+      {isAuthenticated && <ExploreGraphCard />}
 
       <section className="rise mb-10" data-testid="section-inbox">
         <div className="mb-4 flex flex-wrap items-end justify-between gap-2">

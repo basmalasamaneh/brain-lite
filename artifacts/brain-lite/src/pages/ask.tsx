@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { Link } from 'wouter';
-import { ArrowUp, ChevronRight, Lock, RotateCcw, ShieldCheck, Trash2 } from 'lucide-react';
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react';
+import { Link, useLocation, useSearch } from 'wouter';
+import { ArrowUp, ChevronRight, Lock, RotateCcw, ShieldCheck, Trash2, X } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useAskBrain, type Memory } from '@workspace/api-client-react';
 import { useI18n, usePageTitle, type TKey } from '@/lib/i18n';
-import { askSession, useAskTurns, type ChatTurn } from '@/lib/ask-session';
+import { askSession, parseAskScope, useAskTurns, type ChatTurn } from '@/lib/ask-session';
 import { formatDateTime } from '@/lib/memory';
 import { Surface, TypeChip, btnGhost, btnPrimary , Skeleton } from '@/components/kit';
 import { LogoMark, Medallion } from '@/components/brand';
@@ -90,34 +90,45 @@ function Turn({ turn, onRetry, busy }: { turn: ChatTurn; onRetry: (q: string, id
 }
 
 export default function AskPage() {
+  const search = useSearch();
+  const scope = parseAskScope(search);
+  return <ScopedAskPage key={scope.key} scope={scope} />;
+}
+
+function ScopedAskPage({ scope }: { scope: ReturnType<typeof parseAskScope> }) {
   const { t, lang } = useI18n();
+  const [, navigate] = useLocation();
   usePageTitle(t('askTitle'));
   const { user, isAuthenticated, isLoading, login } = useAuth();
-  const turns = useAskTurns();
+  const turns = useAskTurns(scope.key);
   const ask = useAskBrain();
   const [q, setQ] = useState('');
   const ownerRef = useRef(user?.id ?? null);
   ownerRef.current = user?.id ?? null;
   const endRef = useRef<HTMLDivElement>(null);
+  const mounted = useRef(true);
 
+  useLayoutEffect(() => { askSession.setScope(scope.key); }, [scope.key]);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   useEffect(() => { if (!isLoading) askSession.setOwner(user?.id ?? null); }, [user?.id, isLoading]);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }); }, [turns.length, ask.isPending]);
 
   const send = (question: string, retryOf?: string) => {
     const text = question.trim();
-    if (!text || ask.isPending) return;
+    if (!text || ask.isPending || scope.invalid) return;
     if (retryOf) askSession.removeById(retryOf);
     else askSession.push({ id: uid(), role: 'user', text });
     setQ('');
     const ownerAtSend = user?.id ?? null;
+    const sessionAtSend = askSession.token();
     let timezone = 'UTC';
     try { timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; } catch { /* UTC is the safe default when browser timezone detection fails. */ }
-    ask.mutate({ data: { question: text, language: lang, timezone } }, {
+    ask.mutate({ data: { question: text, language: lang, timezone, ...(scope.memoryIds ? { memory_ids: scope.memoryIds } : {}) } }, {
       onSuccess: (res) => {
-        if (ownerRef.current !== ownerAtSend) return;
-        askSession.pushForOwner(ownerAtSend, { id: uid(), role: 'assistant', text: res.answer, sources: res.sources ?? [] });
+        if (!mounted.current || ownerRef.current !== ownerAtSend) return;
+        askSession.pushForSession(ownerAtSend, scope.key, sessionAtSend, { id: uid(), role: 'assistant', text: res.answer, sources: res.sources ?? [] });
       },
-      onError: (err) => { if (ownerRef.current === ownerAtSend) askSession.pushForOwner(ownerAtSend, { id: uid(), role: 'error', question: text, message: classifyError(err) }); },
+      onError: (err) => { if (mounted.current && ownerRef.current === ownerAtSend) askSession.pushForSession(ownerAtSend, scope.key, sessionAtSend, { id: uid(), role: 'error', question: text, message: classifyError(err) }); },
     });
   };
   const onSubmit = (e: FormEvent) => { e.preventDefault(); send(q); };
@@ -149,7 +160,20 @@ export default function AskPage() {
         {turns.length > 0 && <button onClick={() => askSession.clear()} disabled={ask.isPending} className={btnGhost} data-testid="button-ask-clear"><Trash2 className="h-4 w-4" /><span className="hidden sm:inline">{t('askClear')}</span></button>}
       </header>
 
-      {turns.length === 0 && !ask.isPending && (
+      {scope.key && (
+        <div className="mb-5 flex items-center gap-2 rounded-xl border border-gold-400/40 bg-gold-500/5 p-3 text-sm" data-testid="chip-ask-scope">
+          <div className="min-w-0 flex-1">
+            <p className="font-medium break-words">{lang === 'ar' ? 'النطاق: ' : 'Scope: '}{scope.label || (lang === 'ar' ? 'ذكريات الرسم الظاهرة' : 'Visible graph memories')}</p>
+            <p className="text-xs text-muted-foreground" data-testid="text-ask-scope-count">
+              {scope.invalid ? (lang === 'ar' ? 'نطاق غير صالح. أزل النطاق أو افتح الرسم مجدداً.' : 'Invalid scope. Remove it or reopen the graph.')
+                : lang === 'ar' ? `الإجابة من ${scope.memoryIds!.length} ذكريات محددة فقط` : `Answers use only these ${scope.memoryIds!.length} selected memories`}
+            </p>
+          </div>
+          <button type="button" onClick={() => navigate('/ask')} className={btnGhost} data-testid="button-remove-ask-scope" aria-label={lang === 'ar' ? 'إزالة النطاق' : 'Remove scope'}><X className="h-4 w-4" /></button>
+        </div>
+      )}
+
+      {turns.length === 0 && !ask.isPending && !scope.invalid && (
         <div className="rise mb-6" data-testid="section-suggestions">
           <p className="mb-3 text-sm font-medium text-muted-foreground">{t('askSuggest')}</p>
           <div className="grid gap-2">
@@ -174,8 +198,8 @@ export default function AskPage() {
           <textarea value={q} onChange={(e) => setQ(e.target.value)} rows={1} maxLength={1000} placeholder={t('askPlaceholder')} data-testid="input-ask"
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(q); } }}
             className="max-h-40 min-h-[44px] min-w-0 flex-1 resize-none bg-transparent px-3 py-2.5 text-sm outline-none placeholder:text-muted-foreground/70" />
-          <VoiceQuestion onTranscript={setQ} disabled={ask.isPending} testId="button-ask-mic" />
-          <button type="submit" disabled={!q.trim() || ask.isPending} aria-label={t('askSend')} data-testid="button-ask-send"
+          <VoiceQuestion onTranscript={setQ} disabled={ask.isPending || scope.invalid} testId="button-ask-mic" />
+          <button type="submit" disabled={!q.trim() || ask.isPending || scope.invalid} aria-label={t('askSend')} data-testid="button-ask-send"
             className="grid h-11 w-11 shrink-0 place-items-center rounded-full gold-gradient text-gold-ink transition hover:brightness-110 active:scale-95 disabled:opacity-40">
             <ArrowUp className="h-5 w-5" />
           </button>

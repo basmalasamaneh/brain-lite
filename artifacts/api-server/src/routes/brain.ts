@@ -5,7 +5,8 @@ import { AskBrainBody, AskBrainResponse, DeleteBrainDataBody, DeleteBrainDataRes
 import { ObjectNotFoundError, ObjectStorageService } from "../lib/objectStorage";
 import { activeCaptures, activeQuestions as activeUserQuestions, activeUploadRequests, deletingUsers } from "../lib/brain-state";
 import rateLimit from "express-rate-limit";
-import { publicMemory, retrieveForQuestion } from "../lib/semantic-search";
+import { z } from "zod";
+import { InvalidMemoryScopeError, publicMemory, retrieveForQuestion } from "../lib/semantic-search";
 import { validTimezone } from "../lib/semantic-utils";
 import { confirmedOneHop } from "../lib/connections";
 import { ConnectionError } from "../lib/connections";
@@ -38,7 +39,10 @@ function serializeMemory(row: typeof memoriesTable.$inferSelect) {
 }
 
 router.post("/brain/ask", askLimiter, async (req, res): Promise<void> => {
-  const parsed = AskBrainBody.extend({ space_id: spaceIdBody }).safeParse(req.body);
+  const parsed = AskBrainBody.extend({
+    space_id: spaceIdBody,
+    memory_ids: z.array(z.number().int().positive().max(2147483647)).min(1).max(300).optional(),
+  }).safeParse(req.body);
   if (!parsed.success || !parsed.data.question.trim() || !validTimezone(parsed.data.timezone ?? "UTC")) {
     res.status(400).json({ error: "A valid question and language are required" });
     return;
@@ -61,10 +65,12 @@ router.post("/brain/ask", askLimiter, async (req, res): Promise<void> => {
   activeQuestions++;
   activeUserQuestions.set(req.user!.id, (activeUserQuestions.get(req.user!.id) ?? 0) + 1);
   try {
-    const { question, language, timezone = "UTC", space_id } = parsed.data;
-    const retrieved = await retrieveForQuestion(req.user!.id, question, timezone, space_id);
+    const { question, language, timezone = "UTC", space_id, memory_ids } = parsed.data;
+    const retrieved = await retrieveForQuestion(req.user!.id, question, timezone, space_id, memory_ids);
     const aggregate = retrieved.aggregate;
-    const connected = await confirmedOneHop(req.user!.id, retrieved.related.map(({ memory }) => memory.id));
+    // Explicit graph scope is a strict allow-list; connected memories must not
+    // expand its context. Existing Space-only Ask behavior remains unchanged.
+    const connected = memory_ids !== undefined ? [] : await confirmedOneHop(req.user!.id, retrieved.related.map(({ memory }) => memory.id));
     const related = [...retrieved.related, ...connected.map((memory) => ({ memory, relevance: 0 }))];
     const compact = related.map(({ memory: row }) => ({
       id: row.id, type: row.type, title: row.title, summary: row.summary,
@@ -110,6 +116,10 @@ router.post("/brain/ask", askLimiter, async (req, res): Promise<void> => {
         relevance: related.find(({ memory }) => memory.id === id)?.relevance })),
     }));
   } catch (error) {
+    if (error instanceof InvalidMemoryScopeError) {
+      res.status(404).json({ error: "One or more scoped memories are unavailable. Refresh the graph and try again." });
+      return;
+    }
     req.log.warn({ errorName: error instanceof Error ? error.name : "Error" }, "Grounded question failed");
     res.status(503).json({ error: "Unable to safely answer from your memories. Please retry later." });
   } finally {

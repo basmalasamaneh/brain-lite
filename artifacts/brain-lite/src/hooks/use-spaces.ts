@@ -93,7 +93,7 @@ export function useSpaceAction() {
       qc.invalidateQueries({ predicate: (q) => {
         const path = String(q.queryKey[0] ?? '');
         if (isDeletedSpaceQuery(path)) return false;
-        return path.startsWith('/api/spaces') || path.startsWith('/api/memories') || path.startsWith('/api/search') || path.startsWith('/api/brain');
+        return path.startsWith('/api/graph') || path.startsWith('/api/spaces') || path.startsWith('/api/memories') || path.startsWith('/api/search') || path.startsWith('/api/brain');
       } });
       if (deletedPath) qc.removeQueries({ type: 'inactive', predicate: (q) => isDeletedSpaceQuery(String(q.queryKey[0] ?? '')) });
       toast({ title: spaceText(lang, 'saved') });

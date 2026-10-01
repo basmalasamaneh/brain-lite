@@ -8,6 +8,72 @@
 import * as zod from 'zod';
 
 
+/**
+ * Authenticated owner-only graph. Dismissed links are always excluded; only confirmed Space memberships are included. Types is a comma-separated list of memory types. Dates are inclusive calendar dates applied to event_date (or creation date when undated). All node kinds together obey the limit.
+ */
+export const getGraphQueryTypesMax = 200;
+
+export const getGraphQueryIncludeSuggestedDefault = false;
+export const getGraphQueryLimitDefault = 150;
+export const getGraphQueryLimitMax = 300;
+
+
+
+export const GetGraphQueryParams = zod.object({
+  "types": zod.coerce.string().max(getGraphQueryTypesMax).optional().describe('Comma-separated appointment,receipt,task,idea,document,note,other'),
+  "space_id": zod.coerce.string().uuid().optional(),
+  "from": zod.date().optional(),
+  "to": zod.date().optional(),
+  "include_suggested": zod.coerce.boolean().default(getGraphQueryIncludeSuggestedDefault),
+  "limit": zod.coerce.number().int().min(1).max(getGraphQueryLimitMax).default(getGraphQueryLimitDefault)
+})
+
+export const getGraphResponseNodesItemCountMin = 0;
+
+export const getGraphResponseNodesItemTotalCountMin = 0;
+
+export const getGraphResponseNodesItemMemoryIdsMax = 300;
+
+export const getGraphResponseNodesMax = 300;
+
+export const getGraphResponseTotalMemoryCountMin = 0;
+
+export const getGraphResponseFilteredMemoryCountMin = 0;
+
+
+
+export const GetGraphResponse = zod.object({
+  "nodes": zod.array(zod.object({
+  "id": zod.string().describe('Namespaced memory:123, space:uuid or person:normalizedname'),
+  "kind": zod.enum(['memory', 'space', 'person']),
+  "title": zod.string(),
+  "type": zod.string().describe('Memory type'),
+  "date": zod.string().nullable(),
+  "status": zod.string().nullable(),
+  "memory_id": zod.number().int().nullable(),
+  "space_id": zod.string().nullable(),
+  "count": zod.number().int().min(getGraphResponseNodesItemCountMin).describe('Visible degree for memories; visible member count for Spaces/People'),
+  "total_count": zod.number().int().min(getGraphResponseNodesItemTotalCountMin).optional().describe('Spaces/People only: exact distinct memory count across the full owner-filtered scope before graph capping. Unlike count and memory_ids, this is not limited to visible graph memories.'),
+  "pinned": zod.boolean(),
+  "memory_ids": zod.array(zod.number().int()).max(getGraphResponseNodesItemMemoryIdsMax).describe('Only memory IDs present in this capped graph; memory nodes include their own ID')
+})).max(getGraphResponseNodesMax),
+  "edges": zod.array(zod.object({
+  "id": zod.string(),
+  "source": zod.string(),
+  "target": zod.string(),
+  "kind": zod.enum(['connection', 'membership', 'mention']),
+  "relation_type": zod.string().nullable(),
+  "reason": zod.string().nullable(),
+  "suggested": zod.boolean(),
+  "connection_id": zod.number().int().nullable(),
+  "created_at": zod.string().nullable()
+})),
+  "truncated": zod.boolean(),
+  "total_memory_count": zod.number().int().min(getGraphResponseTotalMemoryCountMin),
+  "filtered_memory_count": zod.number().int().min(getGraphResponseFilteredMemoryCountMin)
+})
+
+
 export const InitializeNotificationTimezoneBody = zod.object({
   "timezone": zod.string()
 })
@@ -1295,6 +1361,9 @@ export const SaveVoicePlainNoteResponse = zod.object({
  */
 export const askBrainBodyQuestionMax = 2000;
 
+
+export const askBrainBodyMemoryIdsMax = 300;
+
 export const askBrainBodyTimezoneDefault = `UTC`;
 export const askBrainBodyTimezoneMax = 100;
 
@@ -1302,6 +1371,7 @@ export const askBrainBodyTimezoneMax = 100;
 
 export const AskBrainBody = zod.object({
   "question": zod.string().min(1).max(askBrainBodyQuestionMax),
+  "memory_ids": zod.array(zod.number().int().min(1)).min(1).max(askBrainBodyMemoryIdsMax).optional().describe('Strictly restrict all retrieval, aggregates, answer context and one-hop expansion to these owned IDs; intersect with space_id when supplied. Unowned or absent IDs must never expose another user\'s data.'),
   "space_id": zod.string().uuid().optional().describe('Restrict semantic/exact retrieval and SQL totals to confirmed members; permitted confirmed one-hop connections may expand context'),
   "language": zod.enum(['en', 'ar']),
   "timezone": zod.string().min(1).max(askBrainBodyTimezoneMax).default(askBrainBodyTimezoneDefault).describe('Validated IANA timezone for local calendar ranges; defaults to UTC for older clients.')
@@ -1413,11 +1483,14 @@ export const DeleteBrainDataResponse = zod.object({
 })
 
 
+export const listMemoriesQueryPersonMax = 200;
+
 export const listMemoriesQueryDateFromRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
 export const listMemoriesQueryDateToRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
 
 
 export const ListMemoriesQueryParams = zod.object({
+  "person": zod.coerce.string().min(1).max(listMemoriesQueryPersonMax).optional().describe('Exact people-name match after NFKC normalization, trimming, collapsing whitespace and lower-casing; owner-filtered'),
   "type": zod.coerce.string().optional(),
   "search": zod.coerce.string().optional(),
   "status": zod.enum(['confirmed', 'needs_review']).optional(),

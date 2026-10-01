@@ -13,6 +13,13 @@ export interface BrainQuestion {
      * @maxLength 2000
      */
   question: string;
+  /**
+     * Strictly restrict all retrieval, aggregates, answer context and one-hop expansion to these owned IDs; intersect with space_id when supplied. Unowned or absent IDs must never expose another user's data.
+     * @minItems 1
+     * @maxItems 300
+     * @items.minimum 1
+     */
+  memory_ids?: number[];
   /** Restrict semantic/exact retrieval and SQL totals to confirmed members; permitted confirmed one-hop connections may expand context */
   space_id?: string;
   language: BrainQuestionLanguage;

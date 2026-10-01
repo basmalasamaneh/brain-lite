@@ -22,6 +22,7 @@ import AskPage from '@/pages/ask';
 import SettingsPage from '@/pages/settings';
 import SpacesPage from '@/pages/spaces';
 import SpaceDetailPage from '@/pages/space-detail';
+import GraphPage from '@/pages/graph';
 import { NotificationCenter } from '@/components/notifications';
 import { useToast } from '@/hooks/use-toast';
 import { clearDeferredConnections } from '@/lib/deferred-connections';
@@ -135,6 +136,7 @@ function Router() {
                   <Route path="/capture" component={CapturePage} />
                   <Route path="/memories" component={MemoriesPage} />
                   <Route path="/memories/:id" component={MemoryDetailPage} />
+                  <Route path="/graph" component={GraphPage} />
                   <Route path="/ask" component={AskPage} />
                   <Route path="/settings" component={SettingsPage} />
                   <Route path="/spaces" component={SpacesPage} />

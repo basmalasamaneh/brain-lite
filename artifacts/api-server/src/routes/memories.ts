@@ -18,6 +18,7 @@ import { spaceIdBody } from "../lib/spaces-utils";
 import { ConnectionError, ownerTransaction } from "../lib/connections";
 
 const router: IRouter = Router();
+export const normalizePerson = (name: string) => name.normalize("NFKC").trim().replace(/\s+/gu, " ").toLowerCase();
 const captureLimiter = rateLimit({ windowMs: 60 * 60 * 1000, limit: 30,
   keyGenerator: (req) => req.user!.id, message: { error: "AI request limit reached. Retry later." } });
 
@@ -45,7 +46,9 @@ router.get("/memories", async (req, res): Promise<void> => {
   const parsed = ListMemoriesQueryParams.safeParse(req.query);
   if (!parsed.success) { res.status(400).json({ error: "Invalid filters" }); return; }
   const scope = eq(memoriesTable.userId, req.user!.id);
-  const { type, search, status, date_from, date_to } = parsed.data;
+  const { type, search, status, date_from, date_to, person } = parsed.data;
+  const normalizedPerson = person === undefined ? undefined : normalizePerson(person);
+  if (normalizedPerson === "") { res.status(400).json({ error: "Invalid person filter" }); return; }
   if (!validDateFilter(date_from) || !validDateFilter(date_to) || date_from && date_to && date_from > date_to) {
     res.status(400).json({ error: "Invalid date filters" }); return;
   }
@@ -57,7 +60,11 @@ router.get("/memories", async (req, res): Promise<void> => {
     date_to ? sql`left(${memoriesTable.event_date},10)<=${date_to}` : undefined,
     search ? or(ilike(memoriesTable.title, `%${search.slice(0, 200)}%`), ilike(memoriesTable.raw_text, `%${search.slice(0, 200)}%`)) : undefined,
   )).orderBy(desc(memoriesTable.created_at));
-  res.json(ListMemoriesResponse.parse(rows.map(serialize)));
+  // Apply exact normalized people-array membership, never title/text substring
+  // matching. All candidates have already been ownership-filtered in SQL.
+  const matching = normalizedPerson === undefined ? rows
+    : rows.filter((row) => row.people.some((name) => normalizePerson(name) === normalizedPerson));
+  res.json(ListMemoriesResponse.parse(matching.map(serialize)));
 });
 
 function serialize(row: typeof memoriesTable.$inferSelect) {

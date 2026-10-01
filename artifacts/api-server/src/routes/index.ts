@@ -9,6 +9,7 @@ import semanticRouter from "./semantic";
 import connectionsRouter from "./connections";
 import spacesRouter from "./spaces";
 import notificationsRouter from "./notifications";
+import graphRouter from "./graph";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(semanticRouter);
 router.use(connectionsRouter);
 router.use(spacesRouter);
 router.use(notificationsRouter);
+router.use(graphRouter);
 
 export default router;

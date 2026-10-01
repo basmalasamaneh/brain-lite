@@ -11,6 +11,27 @@ tags:
   - name: health
     description: Health operations
 paths:
+  /graph:
+    get:
+      operationId: getGraph
+      description: Authenticated owner-only graph. Dismissed links are always excluded; only confirmed Space memberships are included. Types is a comma-separated list of memory types. Dates are inclusive calendar dates applied to event_date (or creation date when undated). All node kinds together obey the limit.
+      parameters:
+        - {name: types, in: query, schema: {type: string, maxLength: 200}, description: "Comma-separated appointment,receipt,task,idea,document,note,other"}
+        - {name: space_id, in: query, schema: {type: string, format: uuid}}
+        - {name: from, in: query, schema: {type: string, format: date}}
+        - {name: to, in: query, schema: {type: string, format: date}}
+        - {name: include_suggested, in: query, schema: {type: boolean, default: false}}
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 300, default: 150}}
+      responses:
+        "200":
+          description: Capped graph; counts distinguish a truly small account from a filtered or truncated graph
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/LifeGraph"}
+        "400": {description: Invalid filters}
+        "401": {description: Authentication required}
+        "404": {description: Space does not exist for this owner}
+        "503": {description: Graph temporarily unavailable}
   /notifications/settings:
     post:
       operationId: initializeNotificationTimezone
@@ -678,6 +699,7 @@ paths:
     get:
       operationId: listMemories
       parameters:
+        - {name: person, in: query, schema: {type: string, minLength: 1, maxLength: 200}, description: "Exact people-name match after NFKC normalization, trimming, collapsing whitespace and lower-casing; owner-filtered"}
         - {name: type, in: query, schema: {type: string}}
         - {name: search, in: query, schema: {type: string}}
         - {name: status, in: query, schema: {type: string, enum: [confirmed, needs_review]}}
@@ -863,6 +885,44 @@ components:
   securitySchemes:
     CronBearer: {type: http, scheme: bearer}
   schemas:
+    LifeGraph:
+      type: object
+      required: [nodes, edges, truncated, total_memory_count, filtered_memory_count]
+      properties:
+        nodes: {type: array, items: {$ref: "#/components/schemas/GraphNode"}, maxItems: 300}
+        edges: {type: array, items: {$ref: "#/components/schemas/GraphEdge"}}
+        truncated: {type: boolean}
+        total_memory_count: {type: integer, minimum: 0}
+        filtered_memory_count: {type: integer, minimum: 0}
+    GraphNode:
+      type: object
+      required: [id, kind, title, type, date, status, memory_id, space_id, count, pinned, memory_ids]
+      properties:
+        id: {type: string, description: "Namespaced memory:123, space:uuid or person:normalizedname"}
+        kind: {type: string, enum: [memory, space, person]}
+        title: {type: string}
+        type: {type: string, description: Memory type, Space kind, or person}
+        date: {type: ["string", "null"]}
+        status: {type: ["string", "null"]}
+        memory_id: {type: ["integer", "null"]}
+        space_id: {type: ["string", "null"]}
+        count: {type: integer, minimum: 0, description: Visible degree for memories; visible member count for Spaces/People}
+        total_count: {type: integer, minimum: 0, description: "Spaces/People only: exact distinct memory count across the full owner-filtered scope before graph capping. Unlike count and memory_ids, this is not limited to visible graph memories."}
+        pinned: {type: boolean}
+        memory_ids: {type: array, items: {type: integer}, maxItems: 300, description: Only memory IDs present in this capped graph; memory nodes include their own ID}
+    GraphEdge:
+      type: object
+      required: [id, source, target, kind, relation_type, reason, suggested, connection_id, created_at]
+      properties:
+        id: {type: string}
+        source: {type: string}
+        target: {type: string}
+        kind: {type: string, enum: [connection, membership, mention]}
+        relation_type: {type: ["string", "null"]}
+        reason: {type: ["string", "null"]}
+        suggested: {type: boolean}
+        connection_id: {type: ["integer", "null"]}
+        created_at: {type: ["string", "null"]}
     NotificationTimezoneInput:
       type: object
       required: [timezone]
@@ -1238,6 +1298,7 @@ components:
       required: [question, language]
       properties:
         question: {type: string, minLength: 1, maxLength: 2000}
+        memory_ids: {type: array, minItems: 1, maxItems: 300, uniqueItems: true, items: {type: integer, minimum: 1}, description: "Strictly restrict all retrieval, aggregates, answer context and one-hop expansion to these owned IDs; intersect with space_id when supplied. Unowned or absent IDs must never expose another user's data."}
         space_id: {type: string, format: uuid, description: Restrict semantic/exact retrieval and SQL totals to confirmed members; permitted confirmed one-hop connections may expand context}
         language: {type: string, enum: [en, ar]}
         timezone: {type: string, minLength: 1, maxLength: 100, default: UTC, description: "Validated IANA timezone for local calendar ranges; defaults to UTC for older clients."}

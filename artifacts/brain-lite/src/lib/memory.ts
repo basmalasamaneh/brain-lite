@@ -45,7 +45,7 @@ export function useInvalidateMemories() {
     qc.invalidateQueries({ predicate: (q) => String(q.queryKey[0] ?? '').startsWith('/api/spaces') || String(q.queryKey[0] ?? '').endsWith('/spaces') });
     qc.invalidateQueries({ predicate: (q) => {
       const key = String(q.queryKey[0] ?? '');
-      return key.startsWith('/api/search') || key.startsWith('/api/indexing') || key.startsWith('/api/connections') || key.endsWith('/connections') || key.endsWith('/similar') || key.startsWith('/api/reminders') || key.startsWith('/api/notifications') || key.endsWith('/reminder-settings');
+      return key.startsWith('/api/graph') || key.startsWith('/api/search') || key.startsWith('/api/indexing') || key.startsWith('/api/connections') || key.endsWith('/connections') || key.endsWith('/similar') || key.startsWith('/api/reminders') || key.startsWith('/api/notifications') || key.endsWith('/reminder-settings');
     } });
     if (id != null) qc.invalidateQueries({ queryKey: getGetMemoryQueryKey(id) });
   };

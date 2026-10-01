@@ -8,6 +8,12 @@
 import type { ListMemoriesStatus } from './listMemoriesStatus';
 
 export type ListMemoriesParams = {
+/**
+ * Exact people-name match after NFKC normalization, trimming, collapsing whitespace and lower-casing; owner-filtered
+ * @minLength 1
+ * @maxLength 200
+ */
+person?: string;
 type?: string;
 search?: string;
 status?: ListMemoriesStatus;
