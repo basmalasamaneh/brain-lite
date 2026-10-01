@@ -8,6 +8,7 @@ A bilingual, mobile-first personal second brain for capturing text, photos, and 
 - `pnpm --filter @workspace/brain-lite run dev` — frontend (use the managed workflow for its port/base-path environment)
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
+- `pnpm --filter @workspace/brain-lite test:graph` — deterministic Life Graph interaction/render regression gate; coverage and browser/device limits in `artifacts/brain-lite/tests/GRAPH_REGRESSIONS.md`
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - Required env: `DATABASE_URL` — Postgres connection string

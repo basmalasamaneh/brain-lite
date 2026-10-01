@@ -42,7 +42,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle, Props>(function GraphCa
     palette: null as Palette | null, font: 'system-ui', display: 'Georgia',
     sim: null as Simulation<SimNode, SimLink> | null, settleTimer: 0 as number | ReturnType<typeof setTimeout>,
     raf: 0, camAnim: null as null | { from: Camera; to: Camera; start: number; dur: number },
-    userMoved: false, hidden: false, frames: [] as number[], lastFrame: 0, probeStart: 0, perfReported: false, firstLoad: true,
+    userMoved: false, hidden: false, frames: [] as number[], lastFrame: null as number | null, probeStart: null as number | null, perfReported: false, firstLoad: true,
   });
 
   // ---------- render loop ----------
@@ -71,8 +71,8 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle, Props>(function GraphCa
     // Frame-rate probe while the simulation is working hardest.
     if (simActive && !s.perfReported) {
       // Time-window probe: works even at very low frame rates, before the sim settles.
-      if (!s.probeStart) s.probeStart = now;
-      if (s.lastFrame) s.frames.push(now - s.lastFrame);
+      if (s.probeStart === null) s.probeStart = now;
+      if (s.lastFrame !== null) s.frames.push(now - s.lastFrame);
       s.lastFrame = now;
       const elapsed = now - s.probeStart;
       if (elapsed >= 1200 && s.frames.length >= 3) {
@@ -80,7 +80,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle, Props>(function GraphCa
         s.perfReported = true;
         if (avg > 48) propsRef.current.onPoorPerformance();
       } else if (elapsed >= 2000) { s.perfReported = true; propsRef.current.onPoorPerformance(); }
-    } else { s.lastFrame = 0; s.probeStart = 0; s.frames = []; }
+    } else { s.lastFrame = null; s.probeStart = null; s.frames = []; }
     if (simActive || s.camAnim || (scene && sceneNeedsAnimation(scene))) s.raf = requestAnimationFrame(frame);
   }
   function requestDraw() {
@@ -145,6 +145,8 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle, Props>(function GraphCa
   useEffect(() => {
     const s = st.current;
     const canvas = canvasRef.current!, wrap = wrapRef.current!;
+    // A canvas can mount in an already-backgrounded tab, before any visibility event.
+    s.hidden = document.visibilityState === 'hidden';
     const readFonts = () => {
       const cs = getComputedStyle(document.documentElement);
       s.font = cs.getPropertyValue('--app-font-sans').trim() || 'system-ui';
@@ -168,7 +170,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle, Props>(function GraphCa
     mo.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'dir', 'lang'] });
     const vis = () => {
       s.hidden = document.visibilityState === 'hidden';
-      s.frames = []; s.lastFrame = 0; s.probeStart = 0;
+      s.frames = []; s.lastFrame = null; s.probeStart = null;
       if (s.hidden) { s.sim?.stop(); if (s.raf) cancelAnimationFrame(s.raf); s.raf = 0; }
       else { if (s.sim && s.sim.alpha() > s.sim.alphaMin() && !propsRef.current.reduced) s.sim.restart(); requestDraw(); }
     };
@@ -188,7 +190,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle, Props>(function GraphCa
     const s = st.current;
     for (const n of s.nodes) if (n.x != null) s.positions.set(n.id, { x: n.x, y: n.y!, fx: n.fx, fy: n.fy });
     s.sim?.stop(); clearTimeout(s.settleTimer);
-    s.frames = []; s.lastFrame = 0; s.probeStart = 0;
+    s.frames = []; s.lastFrame = null; s.probeStart = null;
     const now = performance.now();
     const fresh = s.firstLoad;
     const byId = new Map<string, SimNode>();
@@ -229,6 +231,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle, Props>(function GraphCa
     };
     if (reduced) {
       // Static layout: compute synchronously, no motion.
+      s.camAnim = null;
       const ticks = Math.ceil(Math.log(sim.alphaMin()) / Math.log(1 - sim.alphaDecay()));
       sim.tick(Math.min(ticks, 320));
       s.camera = fitCamera(); s.firstLoad = false;
@@ -265,7 +268,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle, Props>(function GraphCa
     let pressNode: SimNode | null = null;
     let dragNode: SimNode | null = null;
     let lpTimer: ReturnType<typeof setTimeout> | undefined;
-    let lastTap = { t: 0, x: 0, y: 0 };
+    let lastTap: { t: number; x: number; y: number } | null = null;
 
     const local = (e: PointerEvent | WheelEvent) => { const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
     const toWorld = (p: { x: number; y: number }) => ({ x: (p.x - s.camera.x) / s.camera.k, y: (p.y - s.camera.y) / s.camera.k });
@@ -344,8 +347,8 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle, Props>(function GraphCa
       if (mode === 'pinch') { if (pointers.size === 1) { const [rem] = [...pointers.values()]; mode = 'pan'; last = rem; } else if (!pointers.size) mode = 'none'; return; }
       if (mode === 'maybe') {
         const now = performance.now();
-        const isDouble = now - lastTap.t < 320 && Math.hypot(p.x - lastTap.x, p.y - lastTap.y) < 32;
-        if (isDouble) { zoomAt(2, p.x, p.y, true); lastTap = { t: 0, x: 0, y: 0 }; }
+        const isDouble = lastTap !== null && now - lastTap.t < 320 && Math.hypot(p.x - lastTap.x, p.y - lastTap.y) < 32;
+        if (isDouble) { zoomAt(2, p.x, p.y, true); lastTap = null; }
         else {
           lastTap = { t: now, x: p.x, y: p.y };
           propsRef.current.onSelect(pressNode ? pressNode.id : null);
@@ -355,7 +358,12 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle, Props>(function GraphCa
       mode = pointers.size ? mode : 'none';
       pressNode = null;
     };
-    const cancel = (e: PointerEvent) => { pointers.delete(e.pointerId); clearTimeout(lpTimer); releaseDrag(); if (!pointers.size) mode = 'none'; };
+    const cancel = (e: PointerEvent) => {
+      if (!pointers.has(e.pointerId)) return;
+      pointers.delete(e.pointerId); clearTimeout(lpTimer); releaseDrag(); pressNode = null;
+      if (mode === 'pinch' && pointers.size === 1) { const [rem] = [...pointers.values()]; mode = 'pan'; last = rem; }
+      else if (!pointers.size) mode = 'none';
+    };
     const wheel = (e: WheelEvent) => { e.preventDefault(); const p = local(e); zoomAt(Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0018)), p.x, p.y); };
     const block = (e: TouchEvent) => { if (e.cancelable) e.preventDefault(); };
     canvas.addEventListener('pointerdown', down);
@@ -367,6 +375,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle, Props>(function GraphCa
     canvas.addEventListener('touchmove', block, { passive: false });
     return () => {
       clearTimeout(lpTimer);
+      releaseDrag();
       canvas.removeEventListener('pointerdown', down);
       canvas.removeEventListener('pointermove', move);
       canvas.removeEventListener('pointerup', up);
